@@ -154,7 +154,7 @@ def _missing_fields(form: dict[str, Any], tenant_id: str) -> list[str]:
     missing = {field for field in required if form.get(field) in (None, "")}
     # Identity matching must use a name plus at least one corroborating field.
     if not any(form.get(field) not in (None, "") for field in ("cnic", "dob", "father_name")):
-        missing.add("cnic")
+        missing.add("identity_corroborator")
     return sorted(missing)
 
 
@@ -270,14 +270,11 @@ def list_cases(actor: User, filters: dict[str, str | None]) -> list[Case]:
     rows = query.all()
     visible: list[Case] = []
     for item in rows:
-        if role == UserRole.citizen.value:
-            visible.append(item)
-        else:
-            try:
-                check_citizen_access(actor, str(item.citizen_id), ConsentScope.claim_data)
-            except ConsentError:
-                continue
-            visible.append(item)
+        try:
+            check_citizen_access(actor, str(item.citizen_id), ConsentScope.claim_data)
+        except ConsentError:
+            continue
+        visible.append(item)
     return visible
 
 
@@ -433,7 +430,18 @@ def decide_case_as_officer(actor: User, case_id: str, outcome: DecisionOutcome, 
     decision = Decision(
         case_id=str(item.id), actor_type=DecisionActor.officer, actor_id=str(actor.id),
         route=None, outcome=outcome, confidence=None, rule_version_id=item.rule_version_id,
-        model_version=None, reason_en=note, reason_ur=note, trace={"note": note},
+        model_version=None,
+        reason_en={
+            DecisionOutcome.approved: "An officer approved this claim after review.",
+            DecisionOutcome.rejected: "An officer declined this claim after review.",
+            DecisionOutcome.needs_more_proof: "An officer needs more information to continue reviewing this claim.",
+        }[outcome],
+        reason_ur={
+            DecisionOutcome.approved: "افسر نے جائزے کے بعد اس دعوے کی منظوری دی۔",
+            DecisionOutcome.rejected: "افسر نے جائزے کے بعد اس دعوے کو منظور نہیں کیا۔",
+            DecisionOutcome.needs_more_proof: "اس دعوے کے جائزے کو جاری رکھنے کے لیے افسر کو مزید معلومات درکار ہیں۔",
+        }[outcome],
+        trace={"note": note},
     )
     item.status = status
     item.updated_at = datetime.now(timezone.utc)

@@ -7,7 +7,7 @@ from uuid import UUID
 
 import jwt
 from flask import Flask, current_app, g, jsonify, request
-from jwt import PyJWKClient
+from jwt import PyJWKClient, PyJWKClientConnectionError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
@@ -65,14 +65,24 @@ def _decode_access_token(token: str) -> dict:
                 audience="authenticated",
                 options={"require": ["exp", "sub", "aud"]},
             )
-    except Exception as exc:
+    except PyJWKClientConnectionError as exc:
+        raise AuthenticationError(
+            "INTERNAL_ERROR", "Authentication service is temporarily unavailable.", 500
+        ) from exc
+    except jwt.PyJWTError as exc:
         # Do not return verifier details, key URLs, or token fragments.
         raise AuthenticationError(
             "UNAUTHENTICATED", "Missing or invalid authentication token.", 401
         ) from exc
+    except Exception as exc:
+        # Verifier outages and JWKS retrieval failures are operational errors,
+        # not evidence that the caller supplied an invalid credential.
+        raise AuthenticationError(
+            "INTERNAL_ERROR", "Authentication service is temporarily unavailable.", 500
+        ) from exc
 
     raise AuthenticationError(
-        "UNAUTHENTICATED", "Authentication is not configured.", 401
+        "INTERNAL_ERROR", "Authentication is not configured.", 500
     )
 
 
@@ -97,7 +107,7 @@ def _load_current_user() -> User:
         user = db.session.get(User, subject)
     except SQLAlchemyError as exc:
         raise AuthenticationError(
-            "UNAUTHENTICATED", "Unable to authenticate this request.", 401
+            "INTERNAL_ERROR", "Unable to authenticate this request.", 500
         ) from exc
 
     if user is None or not user.is_active:

@@ -449,8 +449,10 @@ create table eval_runs (
 Rules for the model:
 
 - All fields are optional at parse time. Missing fields are listed in `missing_fields`.
-- `cnic`: exactly 13 digits (strip dashes). `phone`: 11 digits starting `03`. `dob`: ISO date. `monthly_income`: number >= 0.
-- Validation failures put the field in `missing_fields` (or `invalid_fields`) instead of raising a 500.
+- `cnic`: exactly 13 digits (strip dashes). `phone`: 11 digits starting `03`. `dob`: ISO date. `monthly_income`: finite number >= 0. `household_size` is a positive integer.
+- `full_name` and `father_name` are text; `is_widow` is boolean. Unknown form keys are rejected.
+- Required fields are derived from the active `relief_eligibility` rule's condition fields, plus `full_name`, and at least one identity corroborator (`cnic`, `dob`, or `father_name`). If no corroborator is present, `missing_fields` contains the virtual key `identity_corroborator`; clients should prompt for any one of those inputs. This key is not part of `ClaimForm`.
+- Invalid values are retained in `form_data.invalid_fields` and included in `missing_fields`, so callers can correct them without losing the rest of the form. Phone format is checked when supplied but is not required by the service.
 
 ### 6.2 `IdentityMatch`
 
@@ -538,8 +540,8 @@ Supabase Auth handles signup, login, password reset and token refresh. Flask nev
 - Frontend: `supabase.auth.signUp({email,password,options:{data:{full_name,language}}})` and `signInWithPassword(...)`. The DB trigger `handle_new_user` creates the `users` profile as `citizen`.
 - Every API call: `Authorization: Bearer <supabase access_token>`.
 - **Flask verification rules (`auth/`):**
-    1. Verify signature with PyJWT: preferred `SUPABASE_JWKS_URL` (asymmetric keys, `PyJWKClient`); legacy projects use `SUPABASE_JWT_SECRET` (HS256). Require `aud == "authenticated"` and a valid `exp`.
-    2. `sub` = `users.id`. Load the row from `users` (`role`, `tenant_id`, `is_active`). No row or `is_active=false` returns 401 `UNAUTHENTICATED`.
+    1. Verify signature with PyJWT: preferred `SUPABASE_JWKS_URL` (asymmetric keys, `PyJWKClient`); legacy projects use `SUPABASE_JWT_SECRET` (HS256). Require `aud == "authenticated"` and valid `exp`/`sub`. A missing, malformed, expired, or invalid-signature token returns 401 `UNAUTHENTICATED`.
+    2. `sub` = `users.id`. Load the row from `users` (`role`, `tenant_id`, `is_active`). No row or `is_active=false` returns 401 `UNAUTHENTICATED`. Database failures and JWKS/network/configuration failures return sanitized 500 `INTERNAL_ERROR`; they must not be misreported as invalid credentials.
     3. `role` and `tenant_id` come ONLY from that row, never from JWT claims.
 - Public API uses header `X-API-Key: <key>` (only `/public/*` endpoints).
 - Role changes (making someone officer/admin/auditor/helper) are done by an admin updating `users.role` (or SQL in the demo setup). The signup flow can never set a role.
@@ -564,15 +566,15 @@ Removed: `POST /auth/register` and `POST /auth/login` (replaced by Supabase Auth
 
 |Method + Path|Role|Notes|
 |---|---|---|
-|`POST /cases`|citizen, helper|`{citizen_id, case_type}` returns case in `draft`|
-|`GET /cases`|any (scoped)|Filters: `status, route, assigned_to`. Citizen: own. Helper: linked. Officer: tenant queue, **sorted by** `route=human_review` first, then `priority asc`, then `confidence asc`. Excludes cases whose citizen withdrew consent for `claim_data`|
+|`POST /cases`|citizen, helper|`{citizen_id, case_type}` returns case in `draft`. `scam_report` can be created as a case record, but this service currently supports form editing and decision submission only for `relief_claim`|
+|`GET /cases`|citizen, helper, officer|Filters: `status, route, assigned_to`. Citizen: own. Helper: actively linked citizens. Officer: tenant queue, **sorted by** `route=human_review` first, then `priority asc`, then `confidence asc`. Excludes cases whose citizen withdrew consent for `claim_data`; every returned case passes the normal `claim_data` consent check and generates `data.read_pii` audit evidence. Admin and auditor cannot list case PII through this endpoint|
 |`GET /cases/{id}`|scoped|Consent-checked for officer/helper. Includes `form_data, decisions[], events[]`|
-|`PATCH /cases/{id}/form`|citizen, helper|`{form_data_partial, last_step}`: merges and re-validates; returns `missing_fields`. Saves progress after every step|
-|`POST /cases/{id}/documents`|citizen, helper|multipart: `file`, `kind`|
-|`POST /cases/{id}/submit`|citizen, helper|Runs the decision engine (Section 9). Returns `Decision` and new case status|
+|`PATCH /cases/{id}/form`|citizen, helper|`{form_data_partial, last_step}`: merges and re-validates; returns `missing_fields`. Saves progress after every step. Only `draft` and `needs_info` relief claims can be edited|
+|`POST /cases/{id}/documents`|citizen, helper|multipart: `file`, `kind` (`cnic_photo` or `supporting_doc`). Allowed only in `draft` or `needs_info`; stores content in the private Supabase bucket configured by `SUPABASE_BUCKET` (default `documents`) at a tenant/case-scoped random path. API response exposes document metadata, never the storage path|
+|`POST /cases/{id}/submit`|citizen, helper|Only relief claims in `draft` or `needs_info`. If required fields remain, saves `needs_info` and returns the missing list without deciding. Otherwise requires active officer `claim_data` consent, then runs the decision engine (Section 9) and returns `Decision` and new case status|
 |`POST /cases/{id}/assign`|admin, officer|`{officer_id}`|
 |`POST /cases/{id}/escalate`|officer|`{note}` (sets `priority=1`, event `escalated`)|
-|`POST /cases/{id}/decision`|officer|`{outcome: "approved"\|"rejected"\|"needs_more_proof", note}` writes a `decisions` row with `actor_type='officer'`; sets status; if `approved`, creates a mock payment|
+|`POST /cases/{id}/decision`|officer|`{outcome: "approved"\|"rejected"\|"needs_more_proof", note}` writes a `decisions` row with `actor_type='officer'`; sets status; if `approved`, creates a mock payment in the same transaction. The note is retained in `decisions.trace.note` and the case event; `reason_en`/`reason_ur` are deterministic bilingual outcome explanations, not copies of the officer note|
 |`POST /cases/{id}/close`|officer, admin||
 
 Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> submitted`, `submitted -> approved | in_review | needs_info`, `in_review -> approved | rejected | needs_info`, `approved|rejected -> closed`. Anything else returns 409 `CONFLICT`.
@@ -593,7 +595,7 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 |`GET /rules?rule_key=`|admin, auditor, officer|All versions with status|
 |`POST /rules`|admin|`{rule_key, definition, note}` creates a **new draft version** (version = max + 1). Never edits an old version|
 |`POST /rules/{id}/activate`|admin|Atomically archives the current active version and activates this one. **Takes effect on the next request, no redeploy**|
-|`POST /twin/simulate`|admin|`{draft_rule_id, limit?}` replays past submitted cases against the draft (in memory, writes nothing). Returns `{total, changed, results:[{case_id, old_outcome, new_outcome}], summary:{more_approvals, more_human_reviews, ...}}`|
+|`POST /twin/simulate`|admin|`{draft_rule_id, limit?}` replays this tenant's submitted `relief_claim` cases against a draft rule (in memory, writes nothing and emits no audit row). Optional `limit` must be positive and selects newest cases first; omitted means all submitted cases. Returns `{total, changed, results:[{case_id, old_outcome, new_outcome}], summary:{more_approvals, fewer_approvals, more_human_reviews, fewer_human_reviews}}`. Evaluation failures safely count as `human_review`; response contains case IDs and outcomes only, not form data|
 
 ### 7.7 Consent
 
@@ -617,10 +619,10 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 
 |Method + Path|Notes|
 |---|---|
-|`POST /mock/identity/lookup`|`{cnic?, full_name?, father_name?, dob?}` returns candidate `mock_identity_records` (can return 0, 1, or many; may return wrong/incomplete data on purpose)|
-|`POST /mock/payments`|`{case_id, amount}` creates a `mock_payments` row|
-|`GET /mock/payments/{id}`|status|
-|`POST /mock/complaints`|`{case_id, text}` returns a fake complaint reference|
+|`POST /mock/identity/lookup`|citizen, helper|`{cnic?, full_name?, father_name?, dob?}` returns the `IdentityMatch` candidate output; may return wrong/incomplete matches on purpose|
+|`POST /mock/payments`|admin, officer|`{case_id, amount}` creates/returns a queued `mock_payments` row only for an approved case; amount must match the case's immutable rule version. A case has at most one payment; repeat calls return the existing row without another write or `mock.payment.create` audit event. New rows created here emit `mock.payment.create`; payments created atomically by an AI or officer approval are covered by `ai.decision` or `officer.decision` instead|
+|`GET /mock/payments/{id}`|citizen, helper, officer with authorized case access|Returns payment status and reference; applies the case's normal ownership, link, and consent checks. Admin may create a payment but cannot read a citizen's payment status through this endpoint|
+|`POST /mock/complaints`|citizen, helper|`{case_id, text}` validates case access and returns a fake complaint reference; complaint text is not persisted|
 
 ### 7.10 Public API (API key)
 
@@ -753,7 +755,7 @@ audit.log(actor_type, actor_id, action, entity_type, entity_id, payload, tenant_
 # prev_hash = hash of the last row (or 64 zeros for the first row). Use a DB advisory lock so concurrent writes keep the chain valid.
 ```
 
-Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `twin.simulate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`.
+Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `mock.payment.create`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`. The read-only Digital Twin is an explicit exception: it returns aggregate decision outcomes and case IDs but writes no audit or application data, so it does not emit `twin.simulate` or `data.read_pii` rows.
 
 ### 8.7 Consent enforcement (`@require_consent(scope)`)
 

@@ -48,7 +48,30 @@ def test_required_fields_derive_from_active_rule_and_identity_inputs(monkeypatch
 def test_required_fields_request_identity_corroboration_when_name_is_alone(monkeypatch):
     monkeypatch.setattr(case_service, "get_active_rule", lambda *_: SimpleNamespace(definition={"conditions": []}))
 
-    assert case_service._missing_fields({"full_name": "Fatima Bibi"}, str(uuid4())) == ["cnic"]
+    assert case_service._missing_fields({"full_name": "Fatima Bibi"}, str(uuid4())) == ["identity_corroborator"]
+
+
+def test_list_cases_runs_consent_and_pii_audit_check_for_citizen_cases(monkeypatch):
+    actor = _user("citizen")
+    item = _case(actor)
+    query = MagicMock()
+    query.filter_by.return_value = query
+    query.join.return_value = query
+    query.filter.return_value = query
+    query.order_by.return_value = query
+    query.all.return_value = [item]
+    session = MagicMock()
+    session.query.return_value = query
+    monkeypatch.setattr(db, "session", session)
+    access_check = MagicMock()
+    monkeypatch.setattr(case_service, "check_citizen_access", access_check)
+
+    result = case_service.list_cases(actor, {})
+
+    assert result == [item]
+    access_check.assert_called_once_with(
+        actor, item.citizen_id, ConsentScope.claim_data
+    )
 
 
 def test_form_validation_normalizes_cnic_and_reports_bad_fields():
@@ -160,6 +183,10 @@ def test_officer_approval_creates_decision_payment_event_and_audit(monkeypatch):
     assert session.add.call_count == 3  # decision, event, mock payment
     assert log.call_args.kwargs["action"] == "officer.decision"
     session.commit.assert_called_once_with()
+    decision = session.add.call_args_list[0].args[0]
+    assert decision.reason_en.startswith("An officer approved")
+    assert "افسر نے" in decision.reason_ur
+    assert decision.trace == {"note": "Approved after review."}
 
 
 def test_create_case_scopes_citizen_creates_event_and_audits(monkeypatch):

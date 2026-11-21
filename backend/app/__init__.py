@@ -27,6 +27,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app.api.auth import auth_bp
     from app.api.audit import audit_bp
     from app.api.cases import cases_bp
+    from app.api.mock_services import mock_services_bp
     from app.api.rules import rules_bp
     from app.api.twin import twin_bp
     from app.api.consents import consents_bp, handle_consent_error
@@ -35,6 +36,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(audit_bp, url_prefix="/api/v1/audit-logs")
     app.register_blueprint(cases_bp, url_prefix="/api/v1/cases")
+    app.register_blueprint(mock_services_bp, url_prefix="/api/v1/mock")
     app.register_blueprint(rules_bp, url_prefix="/api/v1/rules")
     app.register_blueprint(twin_bp, url_prefix="/api/v1/twin")
     app.register_blueprint(consents_bp, url_prefix="/api/v1/consents")

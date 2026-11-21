@@ -120,7 +120,23 @@ def test_decode_token_rejects_when_verification_is_not_configured(app):
     with app.app_context(), pytest.raises(AuthenticationError) as exc:
         auth_module._decode_access_token("any-token")
 
-    assert exc.value.code == "UNAUTHENTICATED"
+    assert exc.value.code == "INTERNAL_ERROR"
+    assert exc.value.status_code == 500
+
+
+def test_decode_token_reports_jwks_outage_as_internal_error(app, monkeypatch):
+    app.config["SUPABASE_JWKS_URL"] = "https://auth.example.test/.well-known/jwks.json"
+    monkeypatch.setattr(
+        auth_module, "_jwks_client",
+        lambda _url: SimpleNamespace(get_signing_key_from_jwt=lambda _token: (_ for _ in ()).throw(OSError("network down"))),
+    )
+
+    with app.app_context(), pytest.raises(AuthenticationError) as exc:
+        auth_module._decode_access_token("signed-token")
+
+    assert exc.value.code == "INTERNAL_ERROR"
+    assert exc.value.status_code == 500
+    assert "network down" not in exc.value.message
 
 
 def test_auth_me_loads_role_and_tenant_from_database(app, profile, monkeypatch):
