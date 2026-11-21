@@ -697,12 +697,23 @@ Compare the form against `mock_identity_records` using `rapidfuzz.fuzz.token_sor
   "required_documents": ["cnic_photo"],
   "amount": 25000,
   "thresholds": { "auto_approve": 0.98, "ask_more": 0.70 },
-  "cost": { "wrong_approval": 50, "manual_review": 1 }
+  "cost": { "wrong_approval": 50, "manual_review": 1 },
+  "anomaly": {
+    "duplicate_open_claim": { "enabled": true },
+    "helper_burst": {
+      "enabled": true,
+      "max_per_window": 10,
+      "window_minutes": 10,
+      "max_per_day": 60
+    },
+    "deceased_match": { "enabled": true }
+  }
 }
 ```
 
 - Allowed `op`: `eq, ne, lt, lte, gt, gte, in, not_in`.
 - The engine **reads thresholds and conditions from the active rule version at request time** (cache for at most a few seconds, or not at all). No hard-coded numbers in Python.
+- The engine also reads anomaly enablement and thresholds from the active rule version. Rule changes to anomaly behavior therefore take effect without a code change.
 - Cost logic documented in the admin UI: auto-approve only if `(1 - confidence) * wrong_approval < manual_review`, i.e. `confidence > 1 - manual_review / wrong_approval` (0.98 for 50:1). The `thresholds.auto_approve` value must be at least this.
 
 ### 8.5 Decision engine (`decide(case) -> Decision`)
@@ -715,7 +726,12 @@ Executed on `POST /cases/{id}/submit`. Steps, in order:
 4. **Documents:** if a required document is missing, outcome is `needs_more_proof`. Else `doc_conf` = `quality_score` of the document if present, else `1.0`.
 5. **Completeness:** `completeness_conf = 1.0` if no invalid fields, else `0.6`.
 6. **Evaluate eligibility** conditions: `eligible` (bool) and `failed_conditions[]`.
-7. **Anomaly flags:** duplicate open claim with same CNIC, claim burst from the same helper, `is_deceased` record. Any flag forces `human_review`.
+7. **Anomaly flags:** evaluate each flag only when its `anomaly.<flag>.enabled` value in the active rule is `true`:
+   - `duplicate_open_claim`: find another case of type `relief_claim` in the same tenant with the same CNIC, excluding the current case. Match through the citizen CNIC, not `citizen_id`, so duplicate citizen profiles do not hide a claim. A case is open when its status is not `rejected` or `closed` (that includes `draft`, `needs_info`, `submitted`, `in_review`, and `approved`). One or more matches sets the flag.
+   - `helper_burst`: count submissions by the same helper. Set the flag when the count is greater than `max_per_window` within `window_minutes`, or greater than `max_per_day` within 24 hours. A submission is a `case_events` row with `event_type='submitted'` and that helper's `actor_id`. With the example values, the limits are more than 10 submissions in 10 minutes or more than 60 in 24 hours.
+   - `deceased_match`: set the flag when the matched identity record has `is_deceased=true`.
+
+   Store fired flag names exactly as `duplicate_open_claim`, `helper_burst`, and `deceased_match` in `trace.anomaly_flags`. Any fired flag forces `human_review`; the officer queue shows the flags and the user's reason explains the relevant issue (for example, “We found another claim with your ID, so an officer will check.”). These flags mean suspicious, not guilty; they never cause an AI rejection.
 8. **Confidence** = `min(identity_conf, doc_conf, completeness_conf)`.
 9. **Route:**
     - If any anomaly flag, or `eligible == false`, or an AI call failed: `route = human_review` (**the AI never auto-rejects**; wrong rejections also cost people).
@@ -810,7 +826,7 @@ Must be deterministic and re-runnable.
     3. _Missing info:_ no income given. Result: `needs_info`.
     4. _Ineligible:_ income above the limit. Result: `human_review` with a recommendation (never auto-reject).
     5. _Duplicate claim:_ same CNIC as an open case. Result: `human_review` (anomaly flag).
-- **Rules:** `relief_eligibility` v1 (income <= 30000) active. A draft v2 (income <= 40000) prepared for the live rule-change demo.
+- **Rules:** `relief_eligibility` v1 (income <= 30000) active with the Section 8.4 anomaly settings; a draft v2 (income <= 40000) prepared for the live rule-change demo.
 - **Policy docs for RAG:** 3 to 4 short mock documents (eligibility rules, required documents, how to appeal, how to spot scams), chunked into `policy_chunks`.
 - **Scam dataset:** 200 to 300 labeled messages for training and evaluation (keep a held-out test set for the evaluation dashboard).
 
