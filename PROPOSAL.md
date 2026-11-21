@@ -644,7 +644,7 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 ]}
 ```
 
-Response: `{ "results": [ { "client_op_id": "uuid", "status": "applied | duplicate | error", "error": null } ] }`. `client_op_id` is stored in `idempotency_keys`; replays return `duplicate` and never apply twice.
+Response uses the standard envelope: `{ "data": { "results": [ { "client_op_id": "uuid", "status": "applied | duplicate | error", "result": {"case_id":"uuid", ...} | null, "error": null | {"code":"...","message":"..."} } ] }, "error": null }`. Supported operation types are `create_case` and `patch_form`; a batch has 1–100 operations and is processed in order. Each successful operation and its `idempotency_keys` record commit atomically in its own transaction, so a failed operation does not undo earlier successful operations. The key is globally unique and bound to the authenticated user; a replay by the same user returns `duplicate` and the original result, while another user reusing it gets a per-operation conflict. Failed operations are not cached and may be corrected and retried. Successful operations write `sync.batch` in the same transaction.
 
 ### 7.12 Evaluation and health
 

@@ -77,25 +77,33 @@ def _citizen_for_case(case: Case) -> Citizen:
     return citizen
 
 
-def _require_case_access(actor: User, item: Case, *, write: bool = False) -> Citizen:
+def _require_case_access(
+    actor: User, item: Case, *, write: bool = False, commit_access_audit: bool = True
+) -> Citizen:
     role = _role(actor)
     citizen = _citizen_for_case(item)
     if role == UserRole.citizen.value:
         if str(citizen.user_id) != str(actor.id):
             raise CaseError("NOT_FOUND", "Case was not found.", 404)
         try:
-            return check_citizen_access(actor, str(citizen.id), ConsentScope.claim_data)
+            return check_citizen_access(
+                actor, str(citizen.id), ConsentScope.claim_data, commit=commit_access_audit
+            )
         except ConsentError as exc:
             raise CaseError(exc.code, exc.message, exc.status_code) from exc
     if role == UserRole.helper.value:
         try:
-            check_citizen_access(actor, str(citizen.id), ConsentScope.claim_data)
+            check_citizen_access(
+                actor, str(citizen.id), ConsentScope.claim_data, commit=commit_access_audit
+            )
         except ConsentError as exc:
             raise CaseError(exc.code, exc.message, exc.status_code) from exc
         return citizen
     if role == UserRole.officer.value and not write:
         try:
-            check_citizen_access(actor, str(citizen.id), ConsentScope.claim_data)
+            check_citizen_access(
+                actor, str(citizen.id), ConsentScope.claim_data, commit=commit_access_audit
+            )
         except ConsentError as exc:
             raise CaseError(exc.code, exc.message, exc.status_code) from exc
         return citizen
@@ -207,7 +215,9 @@ def _validate_form(form: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     return normalized, sorted(invalid)
 
 
-def create_case(actor: User, citizen_id: str, case_type: CaseType) -> Case:
+def create_case(
+    actor: User, citizen_id: str, case_type: CaseType, *, commit: bool = True
+) -> Case:
     role = _role(actor)
     if role not in (UserRole.citizen.value, UserRole.helper.value):
         raise CaseError("FORBIDDEN_ROLE", "Only citizens and helpers can create cases.", 403)
@@ -221,7 +231,7 @@ def create_case(actor: User, citizen_id: str, case_type: CaseType) -> Case:
             raise CaseError("NOT_FOUND", "Citizen was not found.", 404)
     else:
         try:
-            check_citizen_access(actor, citizen_id, ConsentScope.claim_data)
+            check_citizen_access(actor, citizen_id, ConsentScope.claim_data, commit=commit)
         except ConsentError as exc:
             raise CaseError(exc.code, exc.message, exc.status_code) from exc
 
@@ -238,7 +248,8 @@ def create_case(actor: User, citizen_id: str, case_type: CaseType) -> Case:
     db.session.flush()
     _write_event(item, str(actor.id), "created")
     _audit(actor, "case.create", item, {"case_type": case_type.value})
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return item
 
 
@@ -286,9 +297,16 @@ def get_case(actor: User, case_id: str) -> dict[str, Any]:
     return {"case": item, "decisions": decisions, "events": events}
 
 
-def update_form(actor: User, case_id: str, form_data_partial: dict[str, Any], last_step: str | None) -> Case:
+def update_form(
+    actor: User,
+    case_id: str,
+    form_data_partial: dict[str, Any],
+    last_step: str | None,
+    *,
+    commit: bool = True,
+) -> Case:
     item = _case_or_404(case_id, str(actor.tenant_id))
-    _require_case_access(actor, item, write=True)
+    _require_case_access(actor, item, write=True, commit_access_audit=commit)
     if item.status not in (CaseStatus.draft, CaseStatus.needs_info):
         raise CaseError("CONFLICT", "This case can no longer be edited.", 409)
     if item.case_type != CaseType.relief_claim:
@@ -304,7 +322,8 @@ def update_form(actor: User, case_id: str, form_data_partial: dict[str, Any], la
     item.updated_at = datetime.now(timezone.utc)
     _write_event(item, str(actor.id), "note", f"Form updated at step: {last_step or 'unspecified'}.")
     _audit(actor, "case.update_form", item, {"last_step": last_step, "missing_fields": item.missing_fields})
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return item
 
 

@@ -12,6 +12,7 @@ from app.models.consent import Consent
 from app.models.decision import Decision
 from app.models.document import Document
 from app.models.helper_citizen_link import HelperCitizenLink
+from app.models.idempotency_key import IdempotencyKey
 from app.models.mock_identity_record import MockIdentityRecord
 from app.models.mock_payment import MockPayment
 from app.models.rule import Rule
@@ -27,6 +28,7 @@ __all__ = [
     "Decision",
     "Document",
     "HelperCitizenLink",
+    "IdempotencyKey",
     "MockIdentityRecord",
     "MockPayment",
     "Rule",

@@ -155,14 +155,17 @@ def _log_access(actor: User, citizen_id: str, action: str, scope: ConsentScope) 
     )
 
 
-def check_citizen_access(actor: User, citizen_id: str, scope: ConsentScope) -> Citizen:
+def check_citizen_access(
+    actor: User, citizen_id: str, scope: ConsentScope, *, commit: bool = True
+) -> Citizen:
     """Enforce ownership/link/consent and audit allowed or withdrawn access."""
     citizen = _get_citizen(citizen_id, str(actor.tenant_id))
     role = _role(actor)
 
     if role == UserRole.citizen.value and str(citizen.user_id) == str(actor.id):
         _log_access(actor, citizen_id, "data.read_pii", scope)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return citizen
 
     if role == UserRole.helper.value:
@@ -180,13 +183,15 @@ def check_citizen_access(actor: User, citizen_id: str, scope: ConsentScope) -> C
     status = getattr(consent.status, "value", consent.status)
     if status == ConsentStatus.withdrawn.value:
         _log_access(actor, citizen_id, "consent.access_denied", scope)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         raise ConsentError("CONSENT_WITHDRAWN", "Citizen has withdrawn consent.", 403)
     if status != ConsentStatus.granted.value:
         raise ConsentError("CONSENT_REQUIRED", "Consent is required for this data.", 403)
 
     _log_access(actor, citizen_id, "data.read_pii", scope)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return citizen
 
 
