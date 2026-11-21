@@ -8,8 +8,10 @@ from app.models.audit_log import AuditLog
 from app.models.case import Case
 from app.models.case_event import CaseEvent
 from app.models.citizen import Citizen
+from app.models.consent import Consent
 from app.models.decision import Decision
 from app.models.document import Document
+from app.models.helper_citizen_link import HelperCitizenLink
 from app.models.mock_identity_record import MockIdentityRecord
 from app.models.mock_payment import MockPayment
 from app.models.rule import Rule
@@ -21,8 +23,10 @@ __all__ = [
     "Case",
     "CaseEvent",
     "Citizen",
+    "Consent",
     "Decision",
     "Document",
+    "HelperCitizenLink",
     "MockIdentityRecord",
     "MockPayment",
     "Rule",

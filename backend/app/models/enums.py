@@ -48,3 +48,15 @@ class RuleStatus(str, Enum):
     draft = "draft"
     active = "active"
     archived = "archived"
+
+
+class ConsentStatus(str, Enum):
+    granted = "granted"
+    withdrawn = "withdrawn"
+
+
+class ConsentScope(str, Enum):
+    identity = "identity"
+    documents = "documents"
+    claim_data = "claim_data"
+    contact = "contact"

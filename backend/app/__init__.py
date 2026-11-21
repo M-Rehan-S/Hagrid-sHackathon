@@ -25,7 +25,11 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app import models as _models  # noqa: F401
 
     from app.api.auth import auth_bp
+    from app.api.consents import consents_bp, handle_consent_error
+    from app.services.consent_service import ConsentError
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(consents_bp, url_prefix="/api/v1/consents")
+    app.register_error_handler(ConsentError, handle_consent_error)
 
     return app
