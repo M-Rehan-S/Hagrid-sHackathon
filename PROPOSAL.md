@@ -557,10 +557,10 @@ Removed: `POST /auth/register` and `POST /auth/login` (replaced by Supabase Auth
 
 |Method + Path|Role|Notes|
 |---|---|---|
-|`POST /citizens`|citizen (self) / helper|Body: `full_name, father_name?, cnic?, dob?, district?, phone?`. Helper-created citizens auto-link to that helper and **start with no consent**|
-|`GET /citizens/{id}`|citizen self / helper (linked + consent) / officer (consent)|Consent-checked (scope `identity`)|
-|`GET /helper/citizens`|helper|List linked citizens for "switch person"|
-|`POST /helper/citizens/{citizen_id}/link`|helper|Creates link (pending the citizen's consent grant)|
+|`POST /citizens`|citizen (self) / helper|Body: `full_name, father_name?, cnic?, dob?, district?, phone?`. Citizen-created profiles bind `user_id` to the authenticated citizen; helper-created profiles leave it null, auto-link to that helper, and **start with no consent**. Normalize/store name keys for identity matching. Writes `citizen.create`|
+|`GET /citizens/{id}`|citizen self / helper (linked + consent) / officer (consent)|Consent-checked (scope `identity`); every allowed read writes `data.read_pii`|
+|`GET /helper/citizens`|helper|Lists own links for "switch person". Returns link metadata without profile fields while identity consent is missing; exposes the citizen name only after the normal link and consent check. Withdrawn-consent citizens are omitted|
+|`POST /helper/citizens/{citizen_id}/link`|helper|Creates or reactivates a same-tenant link, pending the citizen's consent grant. Repeating an active link is safe and returns it. Writes `helper.link`|
 
 ### 7.4 Cases
 
@@ -755,7 +755,7 @@ audit.log(actor_type, actor_id, action, entity_type, entity_id, payload, tenant_
 # prev_hash = hash of the last row (or 64 zeros for the first row). Use a DB advisory lock so concurrent writes keep the chain valid.
 ```
 
-Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `mock.payment.create`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`. The read-only Digital Twin is an explicit exception: it returns aggregate decision outcomes and case IDs but writes no audit or application data, so it does not emit `twin.simulate` or `data.read_pii` rows.
+Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `citizen.create`, `helper.link`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `mock.payment.create`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`. The read-only Digital Twin is an explicit exception: it returns aggregate decision outcomes and case IDs but writes no audit or application data, so it does not emit `twin.simulate` or `data.read_pii` rows.
 
 ### 8.7 Consent enforcement (`@require_consent(scope)`)
 
