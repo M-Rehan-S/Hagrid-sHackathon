@@ -47,7 +47,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 |LLM / AI|Free-tier APIs behind **one wrapper** (`ai/llm_client.py`)|Groq (Llama + Whisper) as primary, Gemini free tier as fallback. Model names live in env vars, not code|
 |Embeddings / RAG|`pgvector` table `policy_chunks`|Embedding model + dimension set in env (default dim 768)|
 |Classical ML|scikit-learn (TF-IDF + logistic regression) for the scam classifier|Trained on a small mock dataset, model file committed|
-|Name matching|`rapidfuzz` + `jellyfish` (Double Metaphone) + variant dictionary||
+|Name matching|`rapidfuzz` + `doublemetaphone` (Double Metaphone) + variant dictionary|`jellyfish` 1.0+ dropped `double_metaphone`; replaced with the dedicated `doublemetaphone` package — same algorithm, same output|
 |OCR / CV (optional)|Tesseract + OpenCV (blur check)|Build only if ahead of schedule|
 |Voice|Browser **Web Speech API** (STT `ur-PK`, TTS `speechSynthesis`) first; Groq Whisper as fallback endpoint||
 |Frontend|**React + Vite + Tailwind**, PWA via `vite-plugin-pwa`, IndexedDB for offline queue|_Assumption: change this line if the team decides otherwise, before anyone writes UI code_|

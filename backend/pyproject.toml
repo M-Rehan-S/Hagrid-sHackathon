@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+# Run from the backend/ directory
+testpaths = ["tests"]
+pythonpath = ["."]          # adds backend/ to sys.path so `import app` works

@@ -1,0 +1,48 @@
+# ── Web Framework ─────────────────────────────────────────────────────────────
+flask>=3.0.0
+flask-cors>=4.0.0
+flask-limiter>=3.5.0
+
+# ── API Docs & Validation ──────────────────────────────────────────────────────
+# spectree auto-generates Swagger UI at /apidocs (Pydantic v2 adapter)
+spectree>=1.3.0
+pydantic>=2.0.0
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy>=2.0.0
+psycopg[binary]>=3.1.0          # Postgres driver for SQLAlchemy (Supabase connection string)
+pgvector>=0.3.0                  # pgvector SQLAlchemy integration for policy_chunks embeddings
+
+# ── Auth (Person A) ────────────────────────────────────────────────────────────
+pyjwt>=2.8.0
+bcrypt>=4.1.0
+
+# ── Name Matching (Person B) ──────────────────────────────────────────────────
+rapidfuzz>=3.6.0                 # token_sort_ratio fuzzy name matching (§8.2)
+doublemetaphone>=1.1              # Double Metaphone phonetic key (§8.1)
+                                  # NOTE: jellyfish 1.0+ dropped double_metaphone;
+                                  #       doublemetaphone is the dedicated replacement.
+
+# ── AI / LLM (Person C) ───────────────────────────────────────────────────────
+groq>=0.9.0                      # Groq Llama + Whisper (primary LLM provider)
+google-generativeai>=0.8.0       # Gemini free-tier (fallback LLM + embeddings)
+
+# ── Classical ML (Person C) ───────────────────────────────────────────────────
+scikit-learn>=1.4.0              # TF-IDF + Logistic Regression for scam classifier (§8.3)
+
+# ── File Storage ───────────────────────────────────────────────────────────────
+supabase>=2.6.0                  # Supabase Python client for Storage signed URLs
+
+# ── OCR / CV (optional, Person C — build only if ahead of schedule) ───────────
+# pytesseract>=0.3.10
+# opencv-python-headless>=4.9.0
+
+# ── Config & Environment ───────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── Production Server ──────────────────────────────────────────────────────────
+gunicorn>=21.2.0
+
+# ── Tests ──────────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-flask>=1.3.0

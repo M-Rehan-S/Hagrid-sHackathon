@@ -1,0 +1,54 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# ── Virtual Environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env
+# .env.example is intentionally NOT ignored — commit it
+!.env.example
+
+# ── pytest & coverage ─────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ── scikit-learn model file (committed intentionally per PROPOSAL.md §2) ──────
+# If you DON'T want to commit it, uncomment the next line:
+# *.pkl
+# *.joblib
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+*.local
+
+# ── IDEs & OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Supabase local CLI ────────────────────────────────────────────────────────
+.supabase/
+supabase/.temp/
