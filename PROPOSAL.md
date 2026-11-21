@@ -901,3 +901,4 @@ Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1`, `VITE_SUPABAS
 - Do not let any AI path approve a case when it errors or is unsure.
 - Do not put secrets in the frontend or the repo. Only the Supabase **anon** key may be in the frontend; never the service role key, DB URL or JWT secret. <!-- CHANGED: SB-AUTH -->
 - Do not build features outside this file before the end-to-end flow works.
+- 
