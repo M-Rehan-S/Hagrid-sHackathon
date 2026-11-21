@@ -1,0 +1,31 @@
+"""SQLAlchemy mappings for proposal-owned database tables.
+
+The numbered SQL migrations own DDL; these mappings only describe existing
+tables and are never used with ``metadata.create_all``.
+"""
+
+from app.models.audit_log import AuditLog
+from app.models.case import Case
+from app.models.case_event import CaseEvent
+from app.models.citizen import Citizen
+from app.models.decision import Decision
+from app.models.document import Document
+from app.models.mock_identity_record import MockIdentityRecord
+from app.models.mock_payment import MockPayment
+from app.models.rule import Rule
+from app.models.tenant import Tenant
+from app.models.user import User
+
+__all__ = [
+    "AuditLog",
+    "Case",
+    "CaseEvent",
+    "Citizen",
+    "Decision",
+    "Document",
+    "MockIdentityRecord",
+    "MockPayment",
+    "Rule",
+    "Tenant",
+    "User",
+]
