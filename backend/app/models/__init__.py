@@ -5,6 +5,7 @@ tables and are never used with ``metadata.create_all``.
 """
 
 from app.models.audit_log import AuditLog
+from app.models.api_key import APIKey
 from app.models.case import Case
 from app.models.case_event import CaseEvent
 from app.models.citizen import Citizen
@@ -22,6 +23,7 @@ from app.models.user import User
 
 __all__ = [
     "AuditLog",
+    "APIKey",
     "Case",
     "CaseEvent",
     "Citizen",

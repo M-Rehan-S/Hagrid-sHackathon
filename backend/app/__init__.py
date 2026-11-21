@@ -30,6 +30,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app.api.citizens import citizens_bp
     from app.api.eval import eval_bp
     from app.api.mock_services import mock_services_bp
+    from app.api.public import health_bp, public_bp
     from app.api.rules import rules_bp
     from app.api.sync import sync_bp
     from app.api.twin import twin_bp
@@ -42,6 +43,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(citizens_bp, url_prefix="/api/v1")
     app.register_blueprint(eval_bp, url_prefix="/api/v1/eval")
     app.register_blueprint(mock_services_bp, url_prefix="/api/v1/mock")
+    app.register_blueprint(public_bp, url_prefix="/api/v1/public")
+    app.register_blueprint(health_bp)
     app.register_blueprint(rules_bp, url_prefix="/api/v1/rules")
     app.register_blueprint(sync_bp, url_prefix="/api/v1/sync")
     app.register_blueprint(twin_bp, url_prefix="/api/v1/twin")

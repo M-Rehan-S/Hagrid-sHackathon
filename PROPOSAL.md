@@ -630,8 +630,10 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 
 |Method + Path|Notes|
 |---|---|
-|`POST /public/scam-check`|`{text}` returns `ScamCheckResult`. Rate-limited per key|
-|`GET /public/cases/{id}/status`|Returns only `{status, updated_at}`. No PII|
+|`POST /public/scam-check`|Requires `X-API-Key` for an active key. `{text}` returns the validated `ScamCheckResult`; public requests are rate-limited to 60/minute per key and are not associated with a citizen. Uses Person C's configured classifier; if it is not configured or unavailable, returns 502 `AI_UNAVAILABLE` and never guesses|
+|`GET /public/cases/{id}/status`|Requires `X-API-Key`; the case must belong to that key's tenant. Returns only `{status, updated_at}`. No PII|
+
+API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. Current rate counters are in process memory, so a multi-worker deployment must move them to a shared rate-limit store before relying on a global per-key ceiling. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
 
 ### 7.11 Offline sync
 
@@ -857,6 +859,8 @@ EMBEDDING_MODEL=...
 EMBEDDING_DIM=768
 CORS_ORIGINS=http://localhost:5173
 RATE_LIMIT_DEFAULT=120/minute
+RATE_LIMIT_PUBLIC_COUNT=60
+RATE_LIMIT_PUBLIC_WINDOW_SECONDS=60
 ```
 
 Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (anon key is public by design; no other secrets) <!-- CHANGED: SB-AUTH -->.
