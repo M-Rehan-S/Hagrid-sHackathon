@@ -42,7 +42,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 |Validation / structured output|**Pydantic v2**|Same models used for request validation and AI structured output|
 |Database|**Supabase Postgres** (+ `pgvector` extension)|Used as plain Postgres. Backend connects with the DB connection string via SQLAlchemy/psycopg|
 |Migrations|Plain SQL files in `db/migrations/` (Supabase CLI or `psql`)|Numbered, applied in order. No auto-generated schema drift|
-|Auth|**Custom JWT in Flask** (PyJWT, bcrypt)|We do NOT use Supabase Auth, so RBAC lives in one place (the Flask backend)|
+|Auth|**Supabase** |We do use Supabase Auth|
 |File storage|Supabase Storage bucket `documents` (private)|Backend generates signed URLs|
 |LLM / AI|Free-tier APIs behind **one wrapper** (`ai/llm_client.py`)|Groq (Llama + Whisper) as primary, Gemini free tier as fallback. Model names live in env vars, not code|
 |Embeddings / RAG|`pgvector` table `policy_chunks`|Embedding model + dimension set in env (default dim 768)|
