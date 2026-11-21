@@ -23,6 +23,26 @@ This file is the **single source of truth** for what we build. Paste it (or the 
 
 ---
 
+## 0.1 Change log: Supabase Auth instead of custom JWT <!-- CHANGED: SB-AUTH -->
+
+Every place changed for this decision is tagged `<!-- CHANGED: SB-AUTH -->`. Summary:
+
+|Section|Change|
+|---|---|
+|2 Tech stack|Auth row; Frontend row (supabase-js for auth only)|
+|3 Repo|`auth/` comment|
+|4 Roles|Note: role is read from `users.role`, never from the JWT|
+|5 Schema|`users.password_hash` removed; `users.id` references `auth.users(id)`; new trigger `handle_new_user`; grants revoked from `anon`/`authenticated`|
+|7.2 Auth|`POST /auth/register` and `POST /auth/login` removed; `POST /auth/session` added; JWT verification rules rewritten|
+|8.6 Audit|`auth.login_failed` removed (Supabase keeps failed logins in its own Auth logs)|
+|8.8 Rate limit|`/auth/login` limit becomes `/auth/session`|
+|10 Frontend|"never calls Supabase" now has one exception: Supabase Auth|
+|11 Seed|Demo users are created in `auth.users`; profiles come from the trigger|
+|12 Env|`JWT_SECRET`, `JWT_EXPIRES_MIN` removed; `SUPABASE_ANON_KEY`, `SUPABASE_JWKS_URL`, `SUPABASE_JWT_SECRET` added|
+|17 Do not|Secrets rule clarified (anon key is public by design)|
+
+---
+
 ## 1. One-paragraph pitch
 
 > We help a **widow (assisted by a community helper)** claim a **mock relief payment** even though **she cannot read forms, has a weak phone signal, and her name is spelled differently across records**.
@@ -42,7 +62,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 |Validation / structured output|**Pydantic v2**|Same models used for request validation and AI structured output|
 |Database|**Supabase Postgres** (+ `pgvector` extension)|Used as plain Postgres. Backend connects with the DB connection string via SQLAlchemy/psycopg|
 |Migrations|Plain SQL files in `db/migrations/` (Supabase CLI or `psql`)|Numbered, applied in order. No auto-generated schema drift|
-|Auth|**Supabase** |We do use Supabase Auth|
+|Auth|**Supabase Auth** (email + password). Flask only **verifies** the Supabase JWT (PyJWT) and loads role/tenant from `users`|Supabase owns passwords, sessions, tokens. RBAC and tenancy still live in ONE place: the `users` table, enforced by Flask. <!-- CHANGED: SB-AUTH -->|
 |File storage|Supabase Storage bucket `documents` (private)|Backend generates signed URLs|
 |LLM / AI|Free-tier APIs behind **one wrapper** (`ai/llm_client.py`)|Groq (Llama + Whisper) as primary, Gemini free tier as fallback. Model names live in env vars, not code|
 |Embeddings / RAG|`pgvector` table `policy_chunks`|Embedding model + dimension set in env (default dim 768)|
@@ -50,7 +70,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 |Name matching|`rapidfuzz` + `doublemetaphone` (Double Metaphone) + variant dictionary|`jellyfish` 1.0+ dropped `double_metaphone`; replaced with the dedicated `doublemetaphone` package — same algorithm, same output|
 |OCR / CV (optional)|Tesseract + OpenCV (blur check)|Build only if ahead of schedule|
 |Voice|Browser **Web Speech API** (STT `ur-PK`, TTS `speechSynthesis`) first; Groq Whisper as fallback endpoint||
-|Frontend|**React + Vite + Tailwind**, PWA via `vite-plugin-pwa`, IndexedDB for offline queue|_Assumption: change this line if the team decides otherwise, before anyone writes UI code_|
+|Frontend|**React + Vite + Tailwind**, PWA via `vite-plugin-pwa`, IndexedDB for offline queue. `@supabase/supabase-js` is used **for login/signup/session only** <!-- CHANGED: SB-AUTH -->|_Assumption: change this line if the team decides otherwise, before anyone writes UI code_|
 |Deployment|Backend: Render or Railway (free tier). Frontend: Vercel or Netlify. DB: Supabase|Deploy an empty app in hour 1|
 |Rate limiting|`Flask-Limiter`||
 |Tests|`pytest`|At minimum: RBAC, consent withdrawal, rule versioning, decision thresholds|
@@ -72,7 +92,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 │   │   ├── __init__.py          # create_app()
 │   │   ├── config.py
 │   │   ├── extensions.py        # db, limiter, spec
-│   │   ├── auth/                # jwt, decorators: @require_role, @require_consent
+│   │   ├── auth/                # verify Supabase JWT, decorators: @require_role, @require_consent <!-- CHANGED: SB-AUTH -->
 │   │   ├── api/                 # blueprints: auth, citizens, cases, rules, consents,
 │   │   │                        #   audit, ai, mock_services, public, eval, sync, twin
 │   │   ├── services/            # business logic: decision_engine, identity_match,
@@ -107,22 +127,23 @@ If you must edit a file you do not own, tell the owner first.
 
 Roles (enum `user_role`): `citizen`, `helper`, `officer`, `admin`, `auditor`.
 
-|Action|citizen|helper|officer|admin|auditor|
-|---|---|---|---|---|---|
-|Log in, view own dashboard|yes|yes|yes|yes|yes|
-|Create / edit own claim|yes|for linked citizens (needs consent)|no|no|no|
-|Upload documents, use voice/text|yes|for linked citizens|no|no|no|
-|View a citizen's case data|own only|linked + consent|**only with active consent**|no|read-only, logs only (no raw PII beyond what the log holds)|
-|Approve / reject case|no|no|yes|no|no|
-|Manage consent|own only|no|no|no|read-only view|
-|Create / edit / activate rules|no|no|no|yes|read-only view|
-|Manage users and API keys|no|no|no|yes|no|
-|Run Digital Twin simulation|no|no|no|yes|no|
-|View audit log|own events only|no|no|yes|yes (full)|
-|View evaluation dashboard|no|no|yes|yes|yes|
+| Action                           | citizen         | helper                              | officer                      | admin | auditor                                                     |
+| -------------------------------- | --------------- | ----------------------------------- | ---------------------------- | ----- | ----------------------------------------------------------- |
+| Log in, view own dashboard       | yes             | yes                                 | yes                          | yes   | yes                                                         |
+| Create / edit own claim          | yes             | for linked citizens (needs consent) | no                           | no    | no                                                          |
+| Upload documents, use voice/text | yes             | for linked citizens                 | no                           | no    | no                                                          |
+| View a citizen's case data       | own only        | linked + consent                    | **only with active consent** | no    | read-only, logs only (no raw PII beyond what the log holds) |
+| Approve / reject case            | no              | no                                  | yes                          | no    | no                                                          |
+| Manage consent                   | own only        | no                                  | no                           | no    | read-only view                                              |
+| Create / edit / activate rules   | no              | no                                  | no                           | yes   | read-only view                                              |
+| Manage users and API keys        | no              | no                                  | no                           | yes   | no                                                          |
+| Run Digital Twin simulation      | no              | no                                  | no                           | yes   | no                                                          |
+| View audit log                   | own events only | no                                  | no                           | yes   | yes (full)                                                  |
+| View evaluation dashboard        | no              | no                                  | yes                          | yes   | yes                                                         |
 
 Notes:
 
+- **Where role lives:** `users.role` is the only source of truth. Flask reads it from the DB on every request. Never trust `role` or `tenant_id` from JWT claims, `user_metadata` or anything the user can edit. <!-- CHANGED: SB-AUTH -->
 - **Tenancy:** every row that belongs to a department carries `tenant_id`. Queries are always filtered by the caller's `tenant_id`. For the hackathon, seed 2 tenants (`Relief Dept`, `Complaints Dept`); the demo runs inside `Relief Dept`.
 - **Helper mode:** a helper has many linked citizens through `helper_citizen_links`. The UI shows a "switch person" list; every request sends the active `citizen_id`; the backend checks the link and the consent.
 
@@ -148,7 +169,7 @@ create type consent_scope  as enum ('identity','documents','claim_data','contact
 create type rule_status    as enum ('draft','active','archived');
 create type scam_label     as enum ('scam','legit','unsure');
 
--- TENANTS AND USERS
+-- TENANTS AND USERS  (users changed for SB-AUTH)
 create table tenants (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -157,17 +178,35 @@ create table tenants (
   created_at timestamptz not null default now()
 );
 
-create table users (
-  id uuid primary key default gen_random_uuid(),
+create table users (                                  -- profile table; one row per Supabase Auth user
+  id uuid primary key references auth.users(id) on delete cascade,  -- SAME id as auth.users (Supabase Auth)
   tenant_id uuid not null references tenants(id),
   email text not null unique,
-  password_hash text not null,
   full_name text not null,
   role user_role not null,
   language text not null default 'ur',          -- 'ur' or 'en'
   is_active boolean not null default true,
   created_at timestamptz not null default now()
-);
+);                                                -- password lives in auth.users, NOT here (SB-AUTH)
+
+-- Every new Supabase signup gets a profile. Role is ALWAYS 'citizen', tenant is 'relief'.
+-- Promote to officer/admin/etc only by UPDATE users SET role (admin or SQL), never from client metadata.
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare t uuid;
+begin
+  select id into t from tenants where slug = 'relief';
+  if t is null then raise exception 'tenant "relief" missing: run 001_init.sql fully'; end if;
+  insert into users (id, tenant_id, email, full_name, role, language)
+  values (new.id, t, new.email,
+          coalesce(nullif(new.raw_user_meta_data->>'full_name',''), split_part(new.email,'@',1)),
+          'citizen',
+          case when new.raw_user_meta_data->>'language' in ('ur','en') then new.raw_user_meta_data->>'language' else 'ur' end)
+  on conflict (id) do nothing;
+  return new;
+end $$;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 create table api_keys (
   id uuid primary key default gen_random_uuid(),
@@ -385,7 +424,7 @@ create table eval_runs (
 );
 ```
 
-**Row Level Security:** enable RLS on all tables with **no policies** (blocks the public anon key). Only the Flask backend, using the server connection string, reads or writes. Never expose the service role key or DB URL to the frontend.
+**Row Level Security:** enable RLS on all tables with **no policies**, and `revoke all` on public tables from `anon` and `authenticated` (done in `001_init.sql`). The anon key is now in the frontend (Supabase Auth), so this is what stops anyone from reading tables directly through Supabase's auto API. Only the Flask backend, using the server connection string, reads or writes. Never expose the service role key or DB URL to the frontend. <!-- CHANGED: SB-AUTH -->
 
 ---
 
@@ -492,16 +531,25 @@ Error:
 |502|`AI_UNAVAILABLE`|LLM provider down. The case still goes to `human_review`|
 |500|`INTERNAL_ERROR`|Anything else (never leak stack traces)|
 
-### 7.2 Auth
+### 7.2 Auth <!-- CHANGED: SB-AUTH -->
 
-- Header: `Authorization: Bearer <jwt>`. JWT payload: `sub` (user id), `role`, `tenant_id`, `exp` (60 min).
+Supabase Auth handles signup, login, password reset and token refresh. Flask never sees passwords and never issues tokens.
+
+- Frontend: `supabase.auth.signUp({email,password,options:{data:{full_name,language}}})` and `signInWithPassword(...)`. The DB trigger `handle_new_user` creates the `users` profile as `citizen`.
+- Every API call: `Authorization: Bearer <supabase access_token>`.
+- **Flask verification rules (`auth/`):**
+    1. Verify signature with PyJWT: preferred `SUPABASE_JWKS_URL` (asymmetric keys, `PyJWKClient`); legacy projects use `SUPABASE_JWT_SECRET` (HS256). Require `aud == "authenticated"` and a valid `exp`.
+    2. `sub` = `users.id`. Load the row from `users` (`role`, `tenant_id`, `is_active`). No row or `is_active=false` returns 401 `UNAUTHENTICATED`.
+    3. `role` and `tenant_id` come ONLY from that row, never from JWT claims.
 - Public API uses header `X-API-Key: <key>` (only `/public/*` endpoints).
+- Role changes (making someone officer/admin/auditor/helper) are done by an admin updating `users.role` (or SQL in the demo setup). The signup flow can never set a role.
 
 |Method + Path|Role|Body / Notes|Returns|
 |---|---|---|---|
-|`POST /auth/register`|public|`{email,password,full_name,language}` (always creates `citizen`)|`{user}`|
-|`POST /auth/login`|public|`{email,password}`|`{access_token, user}`|
+|`POST /auth/session`|any (valid Supabase token)|No body. Call once right after login. Verifies token, writes `auth.login` to the audit log|`{user}`|
 |`GET /auth/me`|any||`{user}`|
+
+Removed: `POST /auth/register` and `POST /auth/login` (replaced by Supabase Auth).
 
 ### 7.3 Citizens and helper links
 
@@ -689,7 +737,7 @@ audit.log(actor_type, actor_id, action, entity_type, entity_id, payload, tenant_
 # prev_hash = hash of the last row (or 64 zeros for the first row). Use a DB advisory lock so concurrent writes keep the chain valid.
 ```
 
-Required `action` values (use exactly these): `auth.login`, `auth.login_failed`, `user.create`, `user.update`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `twin.simulate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`.
+Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `twin.simulate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`.
 
 ### 8.7 Consent enforcement (`@require_consent(scope)`)
 
@@ -703,7 +751,7 @@ For any read of citizen data by someone other than the citizen:
 
 ### 8.8 Rate limiting and failure handling
 
-- Global default 120 requests/min per IP; stricter on `/auth/login` (10/min) and `/ai/*` (30/min per user); per-key limits on `/public/*`.
+- Global default 120 requests/min per IP; stricter on `/auth/session` (10/min) <!-- CHANGED: SB-AUTH --> and `/ai/*` (30/min per user); per-key limits on `/public/*`.
 - LLM calls: timeout 10 s, one retry, then fallback provider, then give up and go to `human_review` or return `AI_UNAVAILABLE`. Never return a guessed answer.
 
 ---
@@ -744,7 +792,7 @@ This is the auditor view. The user only sees `reason_en` / `reason_ur`.
     - Admin: rule editor (form view of Section 8.4 JSON, creates a new version, shows cost-of-error numbers), Digital Twin simulate, users and API keys, analytics.
     - Auditor: audit log table with filters, hash-chain verify button, consent records, AI decisions with full trace, evaluation dashboard.
 - Always show a **"Prototype, not an official service"** banner.
-- The frontend never calls Supabase directly. It only calls `/api/v1`.
+- The frontend calls Supabase **only for Auth** (signUp, signIn, signOut, session refresh) with the public anon key. All data goes through `/api/v1`; never `supabase.from(...)` or Storage directly. <!-- CHANGED: SB-AUTH -->
 
 ---
 
@@ -753,7 +801,7 @@ This is the auditor view. The user only sees `reason_en` / `reason_ur`.
 Must be deterministic and re-runnable.
 
 - **Tenants:** `Relief Dept` (slug `relief`), `Complaints Dept` (slug `complaints`).
-- **Demo users** (password for all: `Demo@1234`):
+- **Demo users** (password for all: `Demo@1234`). Created in `auth.users` (seed SQL, or Dashboard > Authentication with Auto Confirm); the trigger creates profiles; the seed then sets each `users.role` <!-- CHANGED: SB-AUTH -->:
     - `citizen@demo.pk` (citizen), `helper@demo.pk` (helper, linked to 5 citizens), `officer@demo.pk`, `admin@demo.pk`, `auditor@demo.pk`
 - **200 mock identity records** with deliberate bad data: missing CNICs, duplicated people, name variants (Muhammad / Mohammad / Muhammed), swapped given/father names, one deceased record.
 - **Scripted demo personas** (fixed so the live demo is reliable):
@@ -773,8 +821,8 @@ Must be deterministic and re-runnable.
 ```
 FLASK_ENV=development
 SECRET_KEY=change-me
-JWT_SECRET=change-me
-JWT_EXPIRES_MIN=60
+SUPABASE_JWKS_URL=https://xxxx.supabase.co/auth/v1/.well-known/jwks.json   # preferred for JWT verification (SB-AUTH)
+SUPABASE_JWT_SECRET=...                  # only if project still uses the legacy HS256 secret; server-side only (SB-AUTH)
 DATABASE_URL=postgresql://...            # Supabase connection string (server-side only)
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_KEY=...                 # server-side only, never in frontend
@@ -791,7 +839,7 @@ CORS_ORIGINS=http://localhost:5173
 RATE_LIMIT_DEFAULT=120/minute
 ```
 
-Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1` (nothing else; no secrets).
+Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (anon key is public by design; no other secrets) <!-- CHANGED: SB-AUTH -->.
 
 ---
 
@@ -851,5 +899,5 @@ Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1` (nothing else;
 - Do not use real personal data (disqualification).
 - Do not rename or add schema fields without updating this file.
 - Do not let any AI path approve a case when it errors or is unsure.
-- Do not put secrets in the frontend or the repo.
+- Do not put secrets in the frontend or the repo. Only the Supabase **anon** key may be in the frontend; never the service role key, DB URL or JWT secret. <!-- CHANGED: SB-AUTH -->
 - Do not build features outside this file before the end-to-end flow works.
