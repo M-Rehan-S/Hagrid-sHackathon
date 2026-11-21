@@ -10,13 +10,15 @@ from pydantic import ValidationError
 from app.auth import require_auth
 from app.models.citizen import Citizen
 from app.models.helper_citizen_link import HelperCitizenLink
-from app.schemas.citizen import CitizenCreateRequest
+from app.schemas.citizen import CitizenCreateRequest, CitizenPatchRequest
 from app.services.citizen_service import (
     CitizenError,
     create_citizen,
+    export_citizen_data,
     get_citizen,
     link_helper_to_citizen,
     list_helper_citizens,
+    update_citizen,
 )
 
 
@@ -83,6 +85,25 @@ def post_citizen():
 def get_citizen_route(citizen_id):
     citizen = get_citizen(g.current_user, str(citizen_id))
     return jsonify({"data": _citizen_payload(citizen), "error": None})
+
+
+@citizens_bp.patch("/citizens/<uuid:citizen_id>")
+@require_auth
+def patch_citizen_route(citizen_id):
+    try:
+        body = CitizenPatchRequest.model_validate(request.get_json(silent=True) or {})
+    except ValidationError as exc:
+        raise _validation_error() from exc
+    fields = body.model_dump(exclude_unset=True)
+    citizen = update_citizen(g.current_user, str(citizen_id), fields)
+    return jsonify({"data": _citizen_payload(citizen), "error": None})
+
+
+@citizens_bp.get("/citizens/<uuid:citizen_id>/export")
+@require_auth
+def export_citizen_route(citizen_id):
+    payload = export_citizen_data(g.current_user, str(citizen_id))
+    return jsonify({"data": payload, "error": None})
 
 
 @citizens_bp.get("/helper/citizens")

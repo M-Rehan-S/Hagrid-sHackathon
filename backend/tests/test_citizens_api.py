@@ -75,6 +75,40 @@ def test_get_citizen_returns_consent_checked_profile(monkeypatch):
     get.assert_called_once_with(actor, citizen.id)
 
 
+def test_patch_citizen_forwards_only_supplied_fields(monkeypatch):
+    actor = _user("citizen")
+    client = _app(monkeypatch, actor)
+    citizen = _citizen(actor)
+    update = MagicMock(return_value=citizen)
+    monkeypatch.setattr(citizens_api, "update_citizen", update)
+
+    response = client.patch(
+        f"/api/v1/citizens/{citizen.id}",
+        headers={"Authorization": "Bearer token"},
+        json={"phone": "03001234567"},
+    )
+
+    assert response.status_code == 200
+    update.assert_called_once_with(actor, citizen.id, {"phone": "03001234567"})
+
+
+def test_citizen_export_route_returns_data_envelope_and_forwards_self_id(monkeypatch):
+    actor = _user("citizen")
+    client = _app(monkeypatch, actor)
+    citizen_id = str(uuid4())
+    export = MagicMock(return_value={"citizen": {"id": citizen_id}, "cases": []})
+    monkeypatch.setattr(citizens_api, "export_citizen_data", export)
+
+    response = client.get(
+        f"/api/v1/citizens/{citizen_id}/export",
+        headers={"Authorization": "Bearer token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["data"]["citizen"]["id"] == citizen_id
+    export.assert_called_once_with(actor, citizen_id)
+
+
 def test_helper_link_route_matches_proposal_and_is_role_protected(monkeypatch):
     actor = _user("helper")
     client = _app(monkeypatch, actor)

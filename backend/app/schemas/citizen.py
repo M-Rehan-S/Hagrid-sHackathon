@@ -14,3 +14,14 @@ class CitizenCreateRequest(BaseModel):
     dob: date | None = None
     district: str | None = Field(default=None, max_length=120)
     phone: str | None = Field(default=None, max_length=20)
+
+
+class CitizenPatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(default=None, max_length=200)
+    father_name: str | None = Field(default=None, max_length=200)
+    cnic: str | None = Field(default=None, max_length=15)
+    dob: date | None = None
+    district: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=20)
