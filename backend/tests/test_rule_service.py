@@ -118,9 +118,6 @@ def test_activate_rule_archives_old_version_atomically_and_audits(monkeypatch):
         status="draft",
     )
     db = SimpleNamespace(session=MagicMock())
-    db.session.begin = MagicMock()
-    db.session.begin.return_value.__enter__ = MagicMock(return_value=None)
-    db.session.begin.return_value.__exit__ = MagicMock(return_value=False)
     queries = [MagicMock(), MagicMock()]
     db.session.query.side_effect = queries
     queries[0].filter_by.return_value.first.return_value = draft
@@ -131,7 +128,7 @@ def test_activate_rule_archives_old_version_atomically_and_audits(monkeypatch):
     assert result is draft
     assert draft.status == "active"
     assert draft.activated_at.tzinfo is not None
-    db.session.begin.assert_called_once_with()
+    db.session.commit.assert_called_once_with()
     queries[1].filter.assert_called_once_with(
         ("tenant_id", "==", "tenant-1"),
         ("rule_key", "==", "relief_eligibility"),
@@ -154,11 +151,9 @@ def test_activate_rule_archives_old_version_atomically_and_audits(monkeypatch):
 
 def test_activate_missing_rule_returns_none_without_audit(monkeypatch):
     db = SimpleNamespace(session=MagicMock())
-    db.session.begin = MagicMock()
-    db.session.begin.return_value.__enter__ = MagicMock(return_value=None)
-    db.session.begin.return_value.__exit__ = MagicMock(return_value=False)
     db.session.query.return_value.filter_by.return_value.first.return_value = None
     log = _install_modules(monkeypatch, db)
 
     assert rule_service.activate_rule("missing", "admin-1") is None
     log.assert_not_called()
+    db.session.commit.assert_not_called()

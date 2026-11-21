@@ -67,7 +67,9 @@ def create_rule_draft(
     return rule
 
 
-def activate_rule(rule_id: str, admin_user_id: str) -> Any | None:
+def activate_rule(
+    rule_id: str, admin_user_id: str, *, tenant_id: str | None = None
+) -> Any | None:
     """Atomically archive the active version and activate ``rule_id``.
 
     Returns ``None`` when the requested rule does not exist. The caller can
@@ -77,30 +79,32 @@ def activate_rule(rule_id: str, admin_user_id: str) -> Any | None:
     from app.models.rule import Rule
     from app.services.audit import audit
 
-    activated_rule = None
-    with db.session.begin():
-        rule = db.session.query(Rule).filter_by(id=rule_id).first()
-        if rule is None:
-            return None
+    rule_query = db.session.query(Rule).filter_by(id=rule_id)
+    if tenant_id is not None:
+        rule_query = rule_query.filter_by(tenant_id=tenant_id)
+    rule = rule_query.first()
+    if rule is None:
+        return None
 
-        db.session.query(Rule).filter(
-            Rule.tenant_id == rule.tenant_id,
-            Rule.rule_key == rule.rule_key,
-            Rule.status == "active",
-            Rule.id != rule.id,
-        ).update({"status": "archived"}, synchronize_session=False)
+    db.session.query(Rule).filter(
+        Rule.tenant_id == rule.tenant_id,
+        Rule.rule_key == rule.rule_key,
+        Rule.status == "active",
+        Rule.id != rule.id,
+    ).update({"status": "archived"}, synchronize_session=False)
 
-        rule.status = "active"
-        rule.activated_at = datetime.now(timezone.utc)
-        audit.log(
-            actor_type="user",
-            actor_id=admin_user_id,
-            action="rule.activate",
-            entity_type="rule",
-            entity_id=str(rule.id),
-            payload={"rule_key": rule.rule_key, "version": rule.version},
-            tenant_id=rule.tenant_id,
-        )
-        activated_rule = rule
-
-    return activated_rule
+    rule.status = "active"
+    rule.activated_at = datetime.now(timezone.utc)
+    audit.log(
+        actor_type="user",
+        actor_id=admin_user_id,
+        action="rule.activate",
+        entity_type="rule",
+        entity_id=str(rule.id),
+        payload={"rule_key": rule.rule_key, "version": rule.version},
+        tenant_id=rule.tenant_id,
+    )
+    # One transaction also works when request authentication has already
+    # opened the scoped SQLAlchemy session.
+    db.session.commit()
+    return rule
