@@ -17,6 +17,7 @@ import types
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 
 # ── Bootstrap: stub out Flask / SQLAlchemy / extensions before any import ─────
@@ -119,6 +120,11 @@ class TestNormalizeName:
 
     def test_collapses_hussain_variants(self):
         assert normalize_name("Hussein Ali") == "hussain ali"
+
+    def test_transliterates_common_urdu_name_tokens(self):
+        assert normalize_name("محمد اسلم") == "muhammad aslam"
+        assert normalize_name("فاطمہ بی بی") == "fatima"
+        assert normalize_name("احمد خان") == normalize_name("Ahmed Khan")
 
     def test_strips_punctuation(self):
         assert normalize_name("Abdul-Rahman") == "abdul rahman"
@@ -304,3 +310,9 @@ class TestIsDeceasedHardRule:
         rec = _rec(full_name="Fatima Bibi", cnic="4210112345671", is_deceased=False)
         result = _run(FORM_FATIMA, [rec])
         assert result.is_deceased is False
+
+
+class TestIdentityMatchSchema:
+    def test_rejects_status_outside_proposal_enum(self):
+        with pytest.raises(ValidationError):
+            IdentityMatch(status="matched", score=100, confidence=1.0)

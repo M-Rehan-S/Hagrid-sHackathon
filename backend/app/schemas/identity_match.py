@@ -8,7 +8,7 @@ Internal field `is_deceased` is NOT in the API response; it is used by
 decision_engine.py (§8.5 step 7) to flag a deceased record as an anomaly.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -25,7 +25,7 @@ class IdentityMatch(BaseModel):
     Frozen field names from PROPOSAL.md §6.2 — do not rename.
     """
     # §6.2 fields (exposed in API trace)
-    status: str          # "exact" | "probable" | "ambiguous" | "none"
+    status: Literal["exact", "probable", "ambiguous", "none"]
     score: float         # best name similarity score 0..100
     confidence: float    # 0..1 — fed into decision_engine confidence formula
     matched_record_id: Optional[str] = None

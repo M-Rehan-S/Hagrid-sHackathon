@@ -98,6 +98,29 @@ NAME_VARIANTS: dict[str, str] = {
     "zeynab": "zainab",
 }
 
+# Common Urdu-script spellings translated to the same Latin tokens used by
+# NAME_VARIANTS. Keep this deliberately token-based so mixed Urdu/Roman names
+# normalize consistently without changing the matching algorithm.
+URDU_NAME_TOKENS: dict[str, str] = {
+    "محمد": "muhammad",
+    "احمد": "ahmad",
+    "حسین": "hussain",
+    "علی": "ali",
+    "فاطمہ": "fatima",
+    "عائشہ": "aisha",
+    "عثمان": "usman",
+    "ابراہیم": "ibrahim",
+    "اسماعیل": "ismail",
+    "حسن": "hassan",
+    "خالد": "khalid",
+    "اسلم": "aslam",
+    "زینب": "zainab",
+    "خان": "khan",
+    "بیبی": "bibi",
+    "بی": "bibi",
+    "بیگم": "begum",
+}
+
 _PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
 _SPACE_RE = re.compile(r"\s+")
 
@@ -126,6 +149,7 @@ def normalize_name(name: str) -> str:
     # Steps 2 & 3
     tokens = []
     for token in s.split():
+        token = URDU_NAME_TOKENS.get(token, token)
         if token in HONORIFICS:
             continue
         tokens.append(NAME_VARIANTS.get(token, token))
