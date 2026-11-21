@@ -14,7 +14,7 @@ psycopg[binary]>=3.1.0          # Postgres driver for SQLAlchemy (Supabase conne
 pgvector>=0.3.0                  # pgvector SQLAlchemy integration for policy_chunks embeddings
 
 # ── Auth (Person A) ────────────────────────────────────────────────────────────
-pyjwt>=2.8.0
+pyjwt[crypto]>=2.8.0
 bcrypt>=4.1.0
 
 # ── Name Matching (Person B) ──────────────────────────────────────────────────

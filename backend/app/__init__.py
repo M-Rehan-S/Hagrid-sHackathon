@@ -14,10 +14,18 @@ def create_app(test_config: dict | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
+    from app.auth import register_auth_error_handler
+
+    register_auth_error_handler(app)
+
     db.init_app(app)
 
     # Import mappings before any service performs ORM queries. Migrations, not
     # SQLAlchemy metadata, own the database schema.
     from app import models as _models  # noqa: F401
+
+    from app.api.auth import auth_bp
+
+    app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 
     return app

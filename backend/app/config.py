@@ -16,6 +16,8 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "development-only-change-me")
     DATABASE_URL = os.getenv("DATABASE_URL")
     SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_JWKS_URL = os.getenv("SUPABASE_JWKS_URL")
+    SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
     SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
     SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "documents")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
