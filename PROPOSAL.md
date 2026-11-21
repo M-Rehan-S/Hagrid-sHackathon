@@ -648,7 +648,7 @@ Response uses the standard envelope: `{ "data": { "results": [ { "client_op_id":
 
 ### 7.12 Evaluation and health
 
-- `GET /eval/summary` (officer, admin, auditor): latest `eval_runs` per `name`, plus live counters (cases by route, auto-approved count, human handoffs, avg decision latency).
+- `GET /eval/summary` (officer, admin, auditor): standard envelope with `evaluation_runs` (latest global `eval_runs` row per `name`) and `live` counters scoped to the authenticated tenant. `cases_by_route` counts all tenant cases under `auto_approve`, `ask_more`, `human_review`, or `unrouted`; `auto_approved_count` counts distinct cases with an AI `approved` decision; `human_handoffs` counts distinct cases with an AI decision routed to or resulting in `human_review`; `avg_decision_latency_ms` averages each AI decision's time since the most recent preceding `submitted` event for that case, or is `null` if no sample exists. No PII is returned.
 - `GET /health` (public): `{status:"ok", db:"ok"}`.
 
 ---
