@@ -58,7 +58,12 @@ select v.id::uuid,'a0000000-0000-0000-0000-000000000001','relief_eligibility',v.
     jsonb_build_object('id','c3','field','district','op','in','value',jsonb_build_array('Karachi East','Karachi West','Karachi South'),'reason_en','Applicant must live in an eligible district.','reason_ur','درخواست گزار اہل ضلع میں رہتا ہو۔')),
   'required_documents', jsonb_build_array('cnic_photo'),'amount',25000,
   'thresholds', jsonb_build_object('auto_approve',0.98,'ask_more',0.70),
-  'cost', jsonb_build_object('wrong_approval',50,'manual_review',1)),
+  'cost', jsonb_build_object('wrong_approval',50,'manual_review',1),
+  'anomaly', jsonb_build_object(
+    'duplicate_open_claim', jsonb_build_object('enabled',true),
+    'helper_burst', jsonb_build_object(
+      'enabled',true,'max_per_window',10,'window_minutes',10,'max_per_day',60),
+    'deceased_match', jsonb_build_object('enabled',true))),
  v.note,'b0000000-0000-0000-0000-000000000004', case when v.st='active' then now() end
 from (values ('e0000000-0000-0000-0000-000000000001',1,'active',30000,'v1 income<=30000'),
              ('e0000000-0000-0000-0000-000000000002',2,'draft',40000,'v2 demo: income<=40000')) v(id,ver,st,inc,note)

@@ -12,14 +12,14 @@ from app.models.enums import DecisionActor, DecisionOutcome, RouteType
 class Decision(Base):
     __tablename__ = "decisions"
 
-    id: Mapped[object] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    case_id: Mapped[object] = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=False)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, server_default=text("gen_random_uuid()"))
+    case_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("cases.id"), nullable=False)
     actor_type: Mapped[DecisionActor] = mapped_column(SqlEnum(DecisionActor, name="decision_actor", values_callable=lambda enum: [item.value for item in enum]), nullable=False)
-    actor_id: Mapped[object | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    actor_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id"))
     route: Mapped[RouteType | None] = mapped_column(SqlEnum(RouteType, name="route_type", values_callable=lambda enum: [item.value for item in enum]))
     outcome: Mapped[DecisionOutcome] = mapped_column(SqlEnum(DecisionOutcome, name="decision_outcome", values_callable=lambda enum: [item.value for item in enum]), nullable=False)
     confidence: Mapped[float | None] = mapped_column(Numeric(4, 3))
-    rule_version_id: Mapped[object | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rules.id"))
+    rule_version_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("rules.id"))
     model_version: Mapped[str | None] = mapped_column(String)
     reason_en: Mapped[str] = mapped_column(String, nullable=False)
     reason_ur: Mapped[str] = mapped_column(String, nullable=False)

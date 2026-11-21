@@ -13,7 +13,7 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    tenant_id: Mapped[object | None] = mapped_column(UUID(as_uuid=True))
+    tenant_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False))
     actor_type: Mapped[str] = mapped_column(String, nullable=False)
     actor_id: Mapped[str | None] = mapped_column(Text)
     action: Mapped[str] = mapped_column(String, nullable=False)

@@ -10,7 +10,7 @@ from app.extensions import Base
 class MockIdentityRecord(Base):
     __tablename__ = "mock_identity_records"
 
-    id: Mapped[object] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, server_default=text("gen_random_uuid()"))
     cnic: Mapped[str | None] = mapped_column(String)
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     father_name: Mapped[str | None] = mapped_column(String)

@@ -14,44 +14,14 @@ from __future__ import annotations
 
 import sys
 import types
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
 
-# ── Bootstrap: stub out Flask / SQLAlchemy / extensions before any import ─────
-# This lets us test pure logic without spinning up a Flask app.
-
-def _make_stubs() -> None:
-    """
-    Stub only the modules that have external/missing dependencies.
-
-    - app, app.services, app.schemas  → real packages in backend/
-      (pytest's pythonpath=["."] in pyproject.toml puts backend/ on sys.path)
-    - app.extensions                  → stubbed (SQLAlchemy not needed for tests)
-    - app.models.mock_identity_record → stubbed (Person A delivers this later)
-    """
-    # app.extensions — provides `db`; stub so SQLAlchemy is not required
-    ext_mod = types.ModuleType("app.extensions")
-    ext_mod.db = MagicMock(name="db")
-    sys.modules["app.extensions"] = ext_mod
-
-    # app.models — stub as a package so sub-imports resolve
-    models_pkg = types.ModuleType("app.models")
-    models_pkg.__path__ = []           # marks it as a package
-    models_pkg.__package__ = "app.models"
-    sys.modules.setdefault("app.models", models_pkg)
-
-    # app.models.mock_identity_record — doesn't exist yet (Person A delivers it)
-    mir_mod = types.ModuleType("app.models.mock_identity_record")
-    mir_mod.MockIdentityRecord = MagicMock(name="MockIdentityRecord")
-    sys.modules["app.models.mock_identity_record"] = mir_mod
-
-
-_make_stubs()
-
-# Now safe to import
+# The service imports db and its model lazily, so unit-test doubles are
+# installed only for each call and cannot poison integration tests.
 from app.services.identity_match import (  # noqa: E402
     normalize_name,
     name_phonetic_key,
@@ -91,11 +61,18 @@ def _run(form: dict, records: list) -> IdentityMatch:
     """
     mock_db = MagicMock(name="db")
     mock_db.session.query.return_value.all.return_value = records
-    # Replace the db on the already-stubbed app.extensions module so the
-    # deferred `from app.extensions import db` inside match_identity() picks
-    # up our configured mock on every call.
-    sys.modules["app.extensions"].db = mock_db
-    return match_identity(form)
+    ext_mod = types.ModuleType("app.extensions")
+    ext_mod.db = mock_db
+    models_pkg = types.ModuleType("app.models")
+    models_pkg.__path__ = []
+    mir_mod = types.ModuleType("app.models.mock_identity_record")
+    mir_mod.MockIdentityRecord = MagicMock(name="MockIdentityRecord")
+    with patch.dict(sys.modules, {
+        "app.extensions": ext_mod,
+        "app.models": models_pkg,
+        "app.models.mock_identity_record": mir_mod,
+    }):
+        return match_identity(form)
 
 
 # ── §8.1 normalize_name tests ─────────────────────────────────────────────────

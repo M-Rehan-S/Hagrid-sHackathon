@@ -9,8 +9,8 @@ from app.models.enums import UserRole
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[object] = mapped_column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), primary_key=True)
-    tenant_id: Mapped[object] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("auth.users.id", ondelete="CASCADE"), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("tenants.id"), nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role", values_callable=lambda enum: [item.value for item in enum]), nullable=False)

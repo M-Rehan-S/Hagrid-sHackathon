@@ -30,8 +30,11 @@ def test_configured_database_and_service_tables_are_reachable():
         MockIdentityRecord,
         MockPayment,
         Rule,
+        Tenant,
         User,
     )
+    from app.services.identity_match import match_identity
+    from app.services.rule_service import get_active_rule
 
     app = create_app()
     try:
@@ -46,10 +49,24 @@ def test_configured_database_and_service_tables_are_reachable():
                 MockIdentityRecord,
                 MockPayment,
                 Rule,
+                Tenant,
                 User,
             ):
                 # LIMIT 0 checks table/column mapping without returning citizen data.
                 db.session.execute(select(model).limit(0))
+
+            # Exercise the real, read-only service queries against seeded data.
+            identity = match_identity({
+                "full_name": "Fatima Bibi",
+                "father_name": "Muhammad Aslam",
+                "cnic": "4210112345671",
+                "dob": "1978-04-12",
+            })
+            assert identity.status == "exact"
+
+            tenant = db.session.query(Tenant).filter_by(slug="relief").one()
+            active_rule = get_active_rule(str(tenant.id), "relief_eligibility")
+            assert active_rule is not None
     except SQLAlchemyError:
         pytest.fail(
             "Database integration check failed; connection and query details are suppressed.",

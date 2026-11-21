@@ -10,8 +10,8 @@ from app.extensions import Base
 class MockPayment(Base):
     __tablename__ = "mock_payments"
 
-    id: Mapped[object] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    case_id: Mapped[object] = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=False)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, server_default=text("gen_random_uuid()"))
+    case_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("cases.id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'queued'"))
     reference: Mapped[str] = mapped_column(String, nullable=False)
