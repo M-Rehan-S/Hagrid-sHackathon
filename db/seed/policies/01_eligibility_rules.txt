@@ -1,0 +1,20 @@
+Relief Program Eligibility Rules
+
+The mock relief program provides financial assistance exclusively to widows residing in eligible districts of Sindh province. All applicants must meet every condition listed below to qualify for a payout.
+
+Eligibility Criteria:
+1. Marital Status: Applicant must be a widow. Only widows are eligible for this relief program. Divorced, separated, or single women do not qualify under this program.
+
+2. Monthly Household Income: Total monthly household income must be PKR 30,000 or less. Household income above PKR 30,000 makes the applicant ineligible regardless of other conditions.
+
+3. Eligible Districts: Applicant must reside in one of the following approved districts:
+   - Karachi East
+   - Karachi West
+   - Karachi South
+   - Thatta
+   - Badin
+   Applicants from any other district are not eligible for this program.
+
+4. Payout Amount: Eligible widows receive a one-time relief payout of PKR 25,000. This amount is fixed and determined by the active program rules. No other amount will be paid.
+
+If all four conditions are satisfied (widow status, income at or below PKR 30,000, eligible district, and valid identity documents), the applicant qualifies for the PKR 25,000 relief payout.

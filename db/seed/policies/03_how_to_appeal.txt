@@ -1,0 +1,23 @@
+How to Appeal and What Happens When Your Case Needs Review
+
+Understanding the Review Process:
+The system uses AI assistance to evaluate relief claims. When the AI is not confident enough about a decision, or when a case involves ambiguous information, the case is automatically routed to human_review. This means a trained officer will personally examine your case. Cases are never automatically rejected due to low AI confidence — they are always escalated to a human officer instead.
+
+When Your Case Goes to Human Review:
+If your claim is routed to human_review, do not worry. This is a normal part of the process. A relief officer will review your case within 48 hours of it being assigned to them. The officer may approve, request more information, or in rare cases reject the claim after their independent assessment. You will be notified of the outcome via SMS to your registered mobile number.
+
+The needs_more_proof Status:
+If the system returns a needs_more_proof status, it means additional or clearer documentation is required before your case can proceed. This can happen when:
+- Uploaded documents are blurry, damaged, or unclear
+- Identity information cannot be verified from the provided documents
+- Required documents are missing
+
+When you or your community helper receives a needs_more_proof status, you can upload clearer or additional documents directly through the application portal. Once new documents are uploaded, the case will be re-evaluated by the officer.
+
+Low-Confidence Cases Always Go to Humans:
+The system is designed so that ambiguous or low-confidence cases always route to human_review and are never auto-rejected. The AI only auto-approves cases when it is highly confident. When in doubt, a human officer makes the final decision.
+
+Your Rights:
+- You have the right to know the reason for any decision on your case.
+- You have the right to upload additional documents to support your claim.
+- You have the right to view the full history of your case through the application portal.

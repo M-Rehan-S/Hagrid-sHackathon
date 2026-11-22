@@ -1,0 +1,23 @@
+How to Spot Scams and Protect Yourself
+
+Official relief programs and government agencies will never ask you for sensitive information like bank PINs, OTP codes, or processing fees. If anyone contacts you claiming to be from the relief program and asks for this information, it is a scam.
+
+Warning Signs of a Scam:
+1. Requests for Bank PINs or Passwords: The official relief program will never ask for your bank account PIN, ATM PIN, mobile banking password, or any account credentials. Any message or call asking for this information is fraudulent.
+
+2. Requests for OTP Codes: One-Time Passwords (OTPs) sent to your phone are for your protection. No official government representative or relief program officer will ever ask you to share your OTP over the phone, via SMS, or through any app. Never share OTPs with anyone.
+
+3. Processing Fees: The relief program is completely free. You will never be asked to pay a processing fee, registration fee, service charge, or any other amount to apply for or receive relief. Anyone asking for a fee to process your application is running a scam.
+
+4. Non-.gov.pk Links: Official government and relief program communications will only use website links ending in .gov.pk. If you receive an SMS or message with a link that does not end in .gov.pk (for example, links using .com, .net, .pk alone, or shortened URLs), do not click the link. It may be a phishing attempt.
+
+5. Suspicious SMS Messages: If you receive an SMS claiming to be from the relief program and you are not sure if it is real, you can check it using the SMS checker feature inside the application. Open the app, go to Check SMS, paste the message text, and the system will analyze whether it appears to be a genuine government message or a potential scam.
+
+What to Do if You Suspect a Scam:
+- Do not share any personal information, PINs, OTPs, or money.
+- Do not click any suspicious links.
+- Use the in-app SMS checker to verify suspicious messages.
+- Report the suspicious message through the app to help protect other citizens.
+- Contact the official helpline if you believe you have been targeted.
+
+Remember: The official relief program communicates through official .gov.pk channels and will never pressure you for money or sensitive account information.
