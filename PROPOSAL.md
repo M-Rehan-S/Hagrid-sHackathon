@@ -628,7 +628,17 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 |`GET /mock/payments/{id}`|citizen, helper, officer with authorized case access|Returns payment status and reference; applies the case's normal ownership, link, and consent checks. Admin may create a payment but cannot read a citizen's payment status through this endpoint|
 |`POST /mock/complaints`|citizen, helper|`{case_id, text}` validates case access and returns a fake complaint reference; complaint text is not persisted|
 
-### 7.10 Public API (API key)
+### 7.10 API key management
+
+|Method + Path|Role|Notes|
+|---|---|---|
+|`POST /api-keys`|admin|Body: `{label}`. Returns `{id, label, key_prefix, api_key, created_at}`. Generates the full key with `secrets.token_urlsafe(32)` and an `lmk_` prefix. The full key is returned once; only its SHA-256 hash and 8-character lookup prefix are stored.|
+|`GET /api-keys`|admin|Lists keys scoped to the authenticated admin's tenant as `{id, label, key_prefix, created_at, revoked_at}`. Never returns the full key or hash.|
+|`POST /api-keys/{id}/revoke`|admin|Revokes only a key in the authenticated admin's tenant by setting `revoked_at=now()`. A revoked or cross-tenant key returns 404. Returns the key record without the key or hash. The next public request using it returns 401 `UNAUTHENTICATED`.|
+
+API key create and revoke actions write `apikey.create` and `apikey.revoke` audit entries without including the full key or its hash in the payload. API keys are tenant-scoped.
+
+### 7.11 Public API (API key)
 
 |Method + Path|Notes|
 |---|---|
@@ -637,7 +647,7 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 
 API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. Current rate counters are in process memory, so a multi-worker deployment must move them to a shared rate-limit store before relying on a global per-key ceiling. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
 
-### 7.11 Offline sync
+### 7.12 Offline sync
 
 `POST /sync/batch` (citizen, helper). Body:
 
@@ -650,7 +660,7 @@ API keys are looked up by their stored 8-character prefix, then verified by cons
 
 Response uses the standard envelope: `{ "data": { "results": [ { "client_op_id": "uuid", "status": "applied | duplicate | error", "result": {"case_id":"uuid", ...} | null, "error": null | {"code":"...","message":"..."} } ] }, "error": null }`. Supported operation types are `create_case` and `patch_form`; a batch has 1–100 operations and is processed in order. Each successful operation and its `idempotency_keys` record commit atomically in its own transaction, so a failed operation does not undo earlier successful operations. The key is globally unique and bound to the authenticated user; a replay by the same user returns `duplicate` and the original result, while another user reusing it gets a per-operation conflict. Failed operations are not cached and may be corrected and retried. Successful operations write `sync.batch` in the same transaction.
 
-### 7.12 Evaluation and health
+### 7.13 Evaluation and health
 
 - `GET /eval/summary` (officer, admin, auditor): standard envelope with `evaluation_runs` (latest global `eval_runs` row per `name`) and `live` counters scoped to the authenticated tenant. `cases_by_route` counts all tenant cases under `auto_approve`, `ask_more`, `human_review`, or `unrouted`; `auto_approved_count` counts distinct cases with an AI `approved` decision; `human_handoffs` counts distinct cases with an AI decision routed to or resulting in `human_review`; `avg_decision_latency_ms` averages each AI decision's time since the most recent preceding `submitted` event for that case, or is `null` if no sample exists. No PII is returned.
 - `GET /health` (public): `{status:"ok", db:"ok"}`.
