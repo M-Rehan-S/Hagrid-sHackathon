@@ -20,6 +20,18 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     db.init_app(app)
 
+    # Auto-load scam classifier (only if not already set, e.g. by test config).
+    # If the model file is missing or fails to load, SCAM_CHECKER stays unset
+    # so check_scam() raises ScamCheckError("AI_UNAVAILABLE", …, 502) as tests expect.
+    if not app.config.get("SCAM_CHECKER"):
+        try:
+            from app.ai.scam_classifier import load_classifier
+            clf = load_classifier()
+            if clf is not None:
+                app.config["SCAM_CHECKER"] = clf
+        except Exception:
+            pass
+
     # Import mappings before any service performs ORM queries. Migrations, not
     # SQLAlchemy metadata, own the database schema.
     from app import models as _models  # noqa: F401
