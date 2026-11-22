@@ -1,6 +1,6 @@
 # Relief Claim Copilot
 
-> ⚠️ **PROTOTYPE ONLY.** Built for Coder's Cup '26 AI Hackathon (*"The Last Mile: AI on Public Rails"*).  
+> ⚠️ **PROTOTYPE ONLY.** Built for Coder's Cup '26 AI Hackathon (*The Last Mile: AI on Public Rails*).  
 > **Not an official service.** All identity, payment, and data services are mocked. No real personal data anywhere.
 
 ---
