@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Flask
+from flask import Flask, redirect
 
 from app.config import Config
 from app.extensions import db
@@ -38,6 +38,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app.api.twin import twin_bp
     from app.api.consents import consents_bp, handle_consent_error
     from app.services.consent_service import ConsentError
+    from app.openapi import spec
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
@@ -54,5 +55,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(twin_bp, url_prefix="/api/v1/twin")
     app.register_blueprint(consents_bp, url_prefix="/api/v1/consents")
     app.register_error_handler(ConsentError, handle_consent_error)
+
+    # Greedy mode documents every registered Flask route, including endpoints
+    # that still perform their existing manual Pydantic validation.
+    spec.register(app)
+
+    @app.get("/apidocs")
+    def swagger_docs():
+        return redirect("/apidocs/swagger/")
 
     return app
