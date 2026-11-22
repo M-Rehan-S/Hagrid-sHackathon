@@ -1,0 +1,19 @@
+Required Documents for Relief Claim
+
+Every applicant must provide the following documents when submitting a relief claim. Incomplete or unclear documents will delay processing.
+
+Required Documents:
+1. CNIC Photo (cnic_photo): A clear photograph of the applicant's National Identity Card (CNIC). The CNIC number must be exactly 13 digits. The image must be legible and not blurry. Both the front side of the CNIC must be clearly visible.
+
+2. Proof of Widow Status: Applicants must provide one of the following:
+   - Husband's Death Certificate: An official death certificate issued for the applicant's deceased husband, OR
+   - NADRA Widow Status Record: An official record from NADRA (National Database and Registration Authority) confirming the applicant's widow status.
+   Either document is acceptable. Only one of the two is required.
+
+3. Active Mobile Number: Applicant must provide an active mobile phone number. The number must be exactly 11 digits and must start with 03 (e.g., 03001234567, 03211234567). This number is used for notifications and verification. Numbers that do not start with 03 or are not 11 digits will not be accepted.
+
+Document Upload Instructions:
+- Upload clear, well-lit photographs or scans of all required documents.
+- Blurry, damaged, or illegible documents will be flagged and you will be asked to re-upload.
+- Documents can be uploaded through the application portal at any time while your case is in draft or needs_info status.
+- If a document is flagged as low quality, the system will return a needs_more_proof status and you can upload a clearer version.
