@@ -174,6 +174,10 @@ def test_officer_approval_creates_decision_payment_event_and_audit(monkeypatch):
     session.query.return_value = rule_query
     log = MagicMock()
     monkeypatch.setattr(case_service.audit, "log", log)
+    def assert_notifier_runs_after_commit(*_args, **_kwargs):
+        assert session.commit.call_count == 1
+    notification = MagicMock(side_effect=assert_notifier_runs_after_commit)
+    monkeypatch.setattr(case_service, "notify_case_decision", notification)
 
     updated = case_service.decide_case_as_officer(
         actor, item.id, DecisionOutcome.approved, "Approved after review."
@@ -187,6 +191,36 @@ def test_officer_approval_creates_decision_payment_event_and_audit(monkeypatch):
     assert decision.reason_en.startswith("An officer approved")
     assert "افسر نے" in decision.reason_ur
     assert decision.trace == {"note": "Approved after review."}
+    notification.assert_called_once_with(item, decision, officer_approval=True)
+
+
+def test_submit_notifies_only_after_decision_commit(monkeypatch):
+    actor = _user("citizen")
+    item = _case(actor, status=CaseStatus.draft)
+    decision = SimpleNamespace(route="auto_approve")
+    session = MagicMock()
+    monkeypatch.setattr(db, "session", session)
+    monkeypatch.setattr(case_service, "_case_or_404", lambda *_: item)
+    monkeypatch.setattr(case_service, "_require_case_access", lambda *_args, **_kwargs: SimpleNamespace(id=item.citizen_id))
+    monkeypatch.setattr(case_service, "_missing_fields", lambda *_: [])
+    monkeypatch.setattr(case_service, "_active_officer_consent", lambda *_: True)
+    monkeypatch.setattr(case_service.audit, "log", MagicMock())
+
+    def persist_decision(_case_id):
+        session.commit()
+        return decision
+
+    monkeypatch.setattr("app.services.decision_engine.decide", persist_decision)
+    def assert_notifier_runs_after_commit(*_args, **_kwargs):
+        assert session.commit.call_count == 1
+    notification = MagicMock(side_effect=assert_notifier_runs_after_commit)
+    monkeypatch.setattr(case_service, "notify_case_decision", notification)
+
+    result = case_service.submit_case(actor, item.id)
+
+    assert result["decision"] is decision
+    session.commit.assert_called_once_with()
+    notification.assert_called_once_with(item, decision)
 
 
 def test_create_case_scopes_citizen_creates_event_and_audits(monkeypatch):

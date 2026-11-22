@@ -32,6 +32,7 @@ from app.models.user import User
 from app.services.audit import audit
 from app.services.consent_service import ConsentError, check_citizen_access
 from app.services.rule_service import get_active_rule
+from app.services.n8n_notifier import notify_case_decision
 
 
 class CaseError(Exception):
@@ -397,6 +398,8 @@ def submit_case(actor: User, case_id: str):
     from app.services.decision_engine import decide
 
     result = decide(str(item.id))
+    if not isinstance(result, list):
+        notify_case_decision(item, result)
     return {"decision": result, "case": item}
 
 
@@ -476,6 +479,8 @@ def decide_case_as_officer(actor: User, case_id: str, outcome: DecisionOutcome, 
             reference=f"MOCK-OFFICER-{item.id}",
         ))
     db.session.commit()
+    if outcome == DecisionOutcome.approved:
+        notify_case_decision(item, decision, officer_approval=True)
     return item
 
 

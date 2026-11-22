@@ -5,11 +5,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(REPOSITORY_ROOT / ".env", override=False)
+BACKEND_ENV = Path(__file__).resolve().parents[1] / ".env"
+_backend_n8n_url = dotenv_values(BACKEND_ENV).get("N8N_WEBHOOK_URL")
+if not os.getenv("N8N_WEBHOOK_URL") and _backend_n8n_url:
+    os.environ["N8N_WEBHOOK_URL"] = _backend_n8n_url
 
 
 class Config:

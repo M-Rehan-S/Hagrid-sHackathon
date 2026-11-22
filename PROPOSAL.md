@@ -579,6 +579,8 @@ Removed: `POST /auth/register` and `POST /auth/login` (replaced by Supabase Auth
 |`POST /cases/{id}/decision`|officer|`{outcome: "approved"\|"rejected"\|"needs_more_proof", note}` writes a `decisions` row with `actor_type='officer'`; sets status; if `approved`, creates a mock payment in the same transaction. The note is retained in `decisions.trace.note` and the case event; `reason_en`/`reason_ur` are deterministic bilingual outcome explanations, not copies of the officer note|
 |`POST /cases/{id}/close`|officer, admin||
 
+After the decision transaction commits, the backend best-effort sends `case.approved` for an AI `auto_approve` route or officer approval, and `case.human_review` for an AI `human_review` route. It sends the citizen name, case ID, status, rule amount, bilingual reason, and linked account email when available. Missing `N8N_WEBHOOK_URL` is a no-op; webhook errors never change the API result. Recipient addresses ending in `@demo.pk` are sent as null so n8n can use its verified fallback inbox.
+
 Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> submitted`, `submitted -> approved | in_review | needs_info`, `in_review -> approved | rejected | needs_info`, `approved|rejected -> closed`. Anything else returns 409 `CONFLICT`.
 
 ### 7.5 AI endpoints
@@ -587,7 +589,7 @@ Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> su
 |---|---|---|---|
 |`POST /ai/transcribe`|citizen, helper|multipart audio, `lang`|`{text, confidence}` (fallback when browser STT is unavailable)|
 |`POST /ai/extract-form`|citizen, helper|`{text, lang, existing_form?}`|`{form: ClaimForm, missing_fields[], confidence}`|
-|`POST /ai/scam-check`|any logged-in|`{text}`|`ScamCheckResult` (also stored in `scam_messages`)|
+|`POST /ai/scam-check`|any logged-in|`{text}`|`ScamCheckResult` (also stored in `scam_messages`). When `label="scam"`, best-effort sends a `scam.detected` n8n notification with advice and the authenticated user's contact; notification failure does not change the response|
 |`POST /ai/ask`|any logged-in|`{question, lang}`|`{answer, sources:[{doc_name,chunk_index,snippet}], confidence}`. If no source supports the answer: `{answer: null, handoff: true}`|
 
 ### 7.6 Rules and Digital Twin
@@ -861,6 +863,7 @@ CORS_ORIGINS=http://localhost:5173
 RATE_LIMIT_DEFAULT=120/minute
 RATE_LIMIT_PUBLIC_COUNT=60
 RATE_LIMIT_PUBLIC_WINDOW_SECONDS=60
+N8N_WEBHOOK_URL=
 ```
 
 Frontend `.env`: `VITE_API_BASE_URL=http://localhost:5000/api/v1`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (anon key is public by design; no other secrets) <!-- CHANGED: SB-AUTH -->.
