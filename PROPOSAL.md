@@ -62,7 +62,7 @@ The platform is a multi-user SaaS with users, roles, cases, versioned rules, con
 |Validation / structured output|**Pydantic v2**|Same models used for request validation and AI structured output|
 |Database|**Supabase Postgres** (+ `pgvector` extension)|Used as plain Postgres. Backend connects with the DB connection string via SQLAlchemy/psycopg|
 |Migrations|Plain SQL files in `db/migrations/` (Supabase CLI or `psql`)|Numbered, applied in order. No auto-generated schema drift|
-|Auth|**Supabase Auth** (email + password). Flask only **verifies** the Supabase JWT (PyJWT) and loads role/tenant from `users`|Supabase owns passwords, sessions, tokens. RBAC and tenancy still live in ONE place: the `users` table, enforced by Flask. <!-- CHANGED: SB-AUTH -->|
+|Auth|**Supabase Auth** (passkeys for returning users; email + password for initial setup and recovery). Flask only **verifies** the Supabase JWT (PyJWT) and loads role/tenant from `users`|Supabase owns credentials, sessions, tokens. Passkeys use the device authenticator; biometric data is never sent to the app. RBAC and tenancy still live in ONE place: the `users` table, enforced by Flask. <!-- CHANGED: SB-AUTH -->|
 |File storage|Supabase Storage bucket `documents` (private)|Backend generates signed URLs|
 |LLM / AI|Free-tier APIs behind **one wrapper** (`ai/llm_client.py`)|Groq (Llama + Whisper) as primary, Gemini free tier as fallback. Model names live in env vars, not code|
 |Embeddings / RAG|`pgvector` table `policy_chunks`|Embedding model + dimension set in env (default dim 768)|
@@ -535,9 +535,10 @@ Error:
 
 ### 7.2 Auth <!-- CHANGED: SB-AUTH -->
 
-Supabase Auth handles signup, login, password reset and token refresh. Flask never sees passwords and never issues tokens.
+Supabase Auth handles signup, passkey and password sign-in, password reset and token refresh. Passkey sign-in is the primary returning-user flow; email/password remains available for initial account setup and recovery. Flask never sees passwords or biometric data and never issues tokens.
 
-- Frontend: `supabase.auth.signUp({email,password,options:{data:{full_name,language}}})` and `signInWithPassword(...)`. The DB trigger `handle_new_user` creates the `users` profile as `citizen`.
+- Frontend: create accounts with `supabase.auth.signUp({email,password,options:{data:{full_name,language}}})`. After signing in, users can register a passkey with `supabase.auth.registerPasskey()`. Returning users sign in with `supabase.auth.signInWithPasskey()`; email/password sign-in remains available for recovery and devices without a usable passkey. The DB trigger `handle_new_user` creates the `users` profile as `citizen`.
+- Passkey registration requires an existing signed-in Supabase session. Supabase Passkeys are currently experimental and must be enabled in the Supabase Auth dashboard with the deployment's WebAuthn relying-party ID and allowed origins. The browser/device may verify with a biometric or device PIN; the application receives only the WebAuthn result, never a fingerprint, face, or palm image. No backend biometric-login endpoint is added.
 - Every API call: `Authorization: Bearer <supabase access_token>`.
 - **Flask verification rules (`auth/`):**
     1. Verify signature with PyJWT: preferred `SUPABASE_JWKS_URL` (asymmetric keys, `PyJWKClient`); legacy projects use `SUPABASE_JWT_SECRET` (HS256). Require `aud == "authenticated"` and valid `exp`/`sub`. A missing, malformed, expired, or invalid-signature token returns 401 `UNAUTHENTICATED`.
