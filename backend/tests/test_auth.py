@@ -7,7 +7,9 @@ from uuid import uuid4
 
 import jwt
 import pytest
+from flask_limiter import Limiter
 from flask import Flask, jsonify
+from flask_limiter.util import get_remote_address
 
 from app import auth as auth_module
 from app.api.auth import auth_bp
@@ -18,7 +20,9 @@ from app.auth import (
     require_role,
 )
 from app.extensions import db
+from app.extensions import _rate_limit_error
 from app.services import audit as audit_module
+from conftest import init_test_limiter
 
 
 @pytest.fixture
@@ -28,8 +32,10 @@ def app():
         TESTING=True,
         SUPABASE_JWKS_URL=None,
         SUPABASE_JWT_SECRET=None,
+        RATE_LIMIT_AUTH_SESSION_COUNT=2,
     )
     register_auth_error_handler(flask_app)
+    init_test_limiter(flask_app)
     flask_app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     return flask_app
 
@@ -236,3 +242,49 @@ def test_auth_session_audits_successful_login_and_commits(app, profile, monkeypa
         tenant_id=profile.tenant_id,
     )
     commit.assert_called_once_with()
+
+
+def test_auth_session_rate_limit_returns_standard_429_envelope(app, profile, monkeypatch):
+    monkeypatch.setattr(
+        auth_module, "_decode_access_token", lambda _token: {"sub": profile.id}
+    )
+    monkeypatch.setattr(db.session, "get", lambda *_args: profile)
+    monkeypatch.setattr(audit_module.audit, "log", MagicMock())
+
+    client = app.test_client()
+    headers = {"Authorization": "Bearer valid-token"}
+    first = client.post("/api/v1/auth/session", headers=headers)
+    second = client.post("/api/v1/auth/session", headers=headers)
+    third = client.post("/api/v1/auth/session", headers=headers)
+
+    assert first.status_code == second.status_code == 200
+    assert third.status_code == 429
+    assert third.json["error"]["code"] == "RATE_LIMITED"
+    assert "Retry-After" in third.headers
+
+
+def test_global_ip_rate_limit_uses_json_error_envelope():
+    flask_app = Flask(__name__)
+    flask_app.config.update(
+        RATELIMIT_DEFAULT=[],
+        RATELIMIT_APPLICATION=["2 per minute"],
+        RATELIMIT_STORAGE_URI="memory://",
+    )
+    probe_limiter = Limiter(
+        key_func=get_remote_address,
+        application_limits=["2 per minute"],
+        headers_enabled=True,
+        on_breach=_rate_limit_error,
+    )
+    probe_limiter.init_app(flask_app)
+
+    @flask_app.get("/global-limit-probe")
+    def probe():
+        return {"ok": True}
+
+    client = flask_app.test_client()
+    assert client.get("/global-limit-probe").status_code == 200
+    assert client.get("/global-limit-probe").status_code == 200
+    limited = client.get("/global-limit-probe")
+    assert limited.status_code == 429
+    assert limited.json["error"]["code"] == "RATE_LIMITED"

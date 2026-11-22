@@ -26,6 +26,7 @@ from app.api.ai import ai_bp
 from app.auth import register_auth_error_handler
 from app.extensions import db
 from app.services import scam_service
+from conftest import init_test_limiter
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +62,7 @@ def _make_app(monkeypatch, actor=None, mock_db=None):
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True)
     register_auth_error_handler(flask_app)
+    init_test_limiter(flask_app)
     flask_app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
 
     monkeypatch.setattr(auth_module, "_decode_access_token", lambda _token: {"sub": actor.id})
@@ -120,6 +122,7 @@ def test_unauthenticated_ask_returns_401():
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, SUPABASE_JWKS_URL=None, SUPABASE_JWT_SECRET=None)
     register_auth_error_handler(flask_app)
+    init_test_limiter(flask_app)
     flask_app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
 
     client = flask_app.test_client()
@@ -341,6 +344,7 @@ def test_scam_check_regression(monkeypatch):
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, SCAM_CHECKER=lambda _text: scam_result)
     register_auth_error_handler(flask_app)
+    init_test_limiter(flask_app)
     flask_app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
 
     monkeypatch.setattr(auth_module, "_decode_access_token", lambda _token: {"sub": actor.id})

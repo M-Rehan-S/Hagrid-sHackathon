@@ -6,7 +6,7 @@ from flask import Flask, redirect
 from flask_cors import CORS
 
 from app.config import Config
-from app.extensions import db
+from app.extensions import db, limiter
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -23,10 +23,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
 
     from app.auth import register_auth_error_handler
+    from app.errors import register_error_handlers
 
     register_auth_error_handler(app)
+    register_error_handlers(app)
 
     db.init_app(app)
+    limiter.init_app(app)
 
     # Auto-load scam classifier (only if not already set, e.g. by test config).
     # If the model file is missing or fails to load, SCAM_CHECKER stays unset

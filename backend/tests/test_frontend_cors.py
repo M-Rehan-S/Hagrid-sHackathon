@@ -39,3 +39,19 @@ def test_unconfigured_frontend_origin_does_not_receive_cors_access():
     )
 
     assert response.headers.get("Access-Control-Allow-Origin") is None
+
+
+def test_factory_applies_global_ip_rate_limit_with_standard_error_envelope():
+    from app.extensions import limiter
+
+    app = create_app({"DATABASE_URL": "sqlite://", "TESTING": True})
+    limiter.reset()
+    client = app.test_client()
+    try:
+        responses = [client.get("/health") for _ in range(121)]
+        assert all(response.status_code == 200 for response in responses[:120])
+        limited = responses[-1]
+        assert limited.status_code == 429
+        assert limited.json["error"]["code"] == "RATE_LIMITED"
+    finally:
+        limiter.reset()

@@ -83,7 +83,7 @@ insert into t select 'deceased record exists', count(*)=1, '' from mock_identity
 insert into t select 'demo password hash valid in auth.users', encrypted_password = crypt('Demo@1234',encrypted_password), '' from auth.users where email='officer@demo.pk';
 insert into t select '5 demo profiles with correct roles', count(*)=5, count(*)::text from users where (email,role) in (('citizen@demo.pk','citizen'),('helper@demo.pk','helper'),('officer@demo.pk','officer'),('admin@demo.pk','admin'),('auditor@demo.pk','auditor'));
 insert into t select 'anon/authenticated have no table privileges', count(*)=0, coalesce(string_agg(distinct table_name,','),'') from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated');
-insert into t select 'helper linked to 4 seeded citizens', count(*)=4, count(*)::text from helper_citizen_links where helper_user_id='b0000000-0000-0000-0000-000000000002';
+insert into t select 'helper linked to 5 seeded citizens', count(*)=5, count(*)::text from helper_citizen_links where helper_user_id='b0000000-0000-0000-0000-000000000002';
 insert into t select 'audit_logs untouched by tests', count(*)=0, '' from audit_logs where hash in ('h1','h2');
 
 select * from t order by pass, name;   -- failures on top

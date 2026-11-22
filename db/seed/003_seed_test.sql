@@ -34,7 +34,7 @@ insert into citizens (id,tenant_id,user_id,full_name,father_name,cnic,dob,distri
 on conflict do nothing;
 
 insert into helper_citizen_links (helper_user_id,citizen_id)
-select 'b0000000-0000-0000-0000-000000000002', id from citizens where id::text like 'c0000000%' and id <> 'c0000000-0000-0000-0000-000000000001'
+select 'b0000000-0000-0000-0000-000000000002', id from citizens where id::text like 'c0000000%'
 on conflict do nothing;
 
 -- Mock identity registry (deliberate bad data)
@@ -95,10 +95,11 @@ insert into cases (id,tenant_id,case_type,citizen_id,created_by,status,form_data
 on conflict do nothing;
 
 -- Scam samples + one RAG chunk
-insert into scam_messages (tenant_id,text,label,confidence,category) values
- ('a0000000-0000-0000-0000-000000000001','Mubarak! Relief Rs 25000 mil gaye. Click http://bit.ly/x aur CNIC/PIN bhejein','scam',0.97,'fake_relief'),
- ('a0000000-0000-0000-0000-000000000001','Your relief claim status was updated. Visit relief.gov.pk','legit',0.93,null),
- ('a0000000-0000-0000-0000-000000000001','Aap ka claim check karne ke liye call karein','unsure',0.55,'other');
+insert into scam_messages (id,tenant_id,text,label,confidence,category) values
+ ('70000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','Mubarak! Relief Rs 25000 mil gaye. Click http://bit.ly/x aur CNIC/PIN bhejein','scam',0.97,'fake_relief'),
+ ('70000000-0000-0000-0000-000000000002','a0000000-0000-0000-0000-000000000001','Your relief claim status was updated. Visit relief.gov.pk','legit',0.93,null),
+ ('70000000-0000-0000-0000-000000000003','a0000000-0000-0000-0000-000000000001','Aap ka claim check karne ke liye call karein','unsure',0.55,'other')
+on conflict (id) do nothing;
 insert into policy_chunks (doc_name,chunk_index,content,embedding)
 values ('eligibility',0,'Widows with monthly income up to PKR 30,000 in eligible Karachi districts qualify.',array_fill(0.01::real,array[768])::vector)
 on conflict do nothing;

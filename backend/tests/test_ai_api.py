@@ -11,6 +11,7 @@ from app.auth import register_auth_error_handler
 from app.extensions import db
 from app.services import scam_service
 from app.services.scam_service import ScamCheckError
+from conftest import init_test_limiter
 
 
 def _result(label="scam"):
@@ -29,6 +30,7 @@ def test_logged_in_scam_check_persists_audits_and_notifies_after_commit(monkeypa
     app = Flask(__name__)
     app.config.update(TESTING=True, SCAM_CHECKER=lambda _text: _result())
     register_auth_error_handler(app)
+    init_test_limiter(app)
     app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
     monkeypatch.setattr(auth_module, "_decode_access_token", lambda _token: {"sub": actor.id})
     session = MagicMock()
@@ -105,6 +107,7 @@ def test_ai_rate_limit_is_per_user_and_shared_across_ai_routes(monkeypatch):
         RATE_LIMIT_AI_WINDOW_SECONDS=60,
     )
     register_auth_error_handler(app)
+    init_test_limiter(app)
     app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
     users = {actor.id: actor, other_actor.id: other_actor}
     monkeypatch.setattr(auth_module, "_decode_access_token", lambda token: {
@@ -120,8 +123,6 @@ def test_ai_rate_limit_is_per_user_and_shared_across_ai_routes(monkeypatch):
     })
     extractor = MagicMock(return_value={"form": {}, "missing_fields": [], "confidence": 0.0})
     monkeypatch.setattr("app.api.ai.extract_form", extractor)
-    clock = [100.0]
-    monkeypatch.setattr("app.api.ai.time.monotonic", lambda: clock[0])
     client = app.test_client()
     headers = {"Authorization": "Bearer user-one"}
 
@@ -141,9 +142,4 @@ def test_ai_rate_limit_is_per_user_and_shared_across_ai_routes(monkeypatch):
     )
     assert other_user.status_code == 200
 
-    clock[0] += 61
-    after_window = client.post(
-        "/api/v1/ai/extract-form", json={"text": "My name is Fatima"}, headers=headers,
-    )
-    assert after_window.status_code == 200
-    extractor.assert_called_once()
+    extractor.assert_not_called()

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, g, jsonify
+from flask import Blueprint, current_app, g, jsonify
 
 from app.auth import require_auth
+from app.extensions import limiter
 from app.services.audit import audit
 
 
@@ -25,6 +26,10 @@ def _user_payload(user) -> dict:
 
 @auth_bp.post("/session")
 @require_auth
+@limiter.limit(
+    lambda: f"{current_app.config.get('RATE_LIMIT_AUTH_SESSION_COUNT', 10)} per minute",
+    override_defaults=False,
+)
 def create_session():
     """Validate the current Supabase token and record a successful login."""
     user = g.current_user

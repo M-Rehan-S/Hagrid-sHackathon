@@ -646,7 +646,7 @@ API key create and revoke actions write `apikey.create` and `apikey.revoke` audi
 |`POST /public/scam-check`|Requires `X-API-Key` for an active key. `{text}` returns the validated `ScamCheckResult`; public requests are rate-limited to 60/minute per key and are not associated with a citizen. Uses Person C's configured classifier; if it is not configured or unavailable, returns 502 `AI_UNAVAILABLE` and never guesses|
 |`GET /public/cases/{id}/status`|Requires `X-API-Key`; the case must belong to that key's tenant. Returns only `{status, updated_at}`. No PII|
 
-API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. AI and public rate counters are in process memory, so a multi-worker deployment must move them to a shared rate-limit store before relying on global per-user or per-key ceilings. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
+API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. Rate-limit storage defaults to in-process memory (`RATE_LIMIT_STORAGE_URI=memory://`). A multi-worker deployment must configure a shared rate-limit store before relying on global IP, per-user, or per-key ceilings. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
 
 ### 7.12 Offline sync
 
@@ -872,6 +872,10 @@ EMBEDDING_MODEL=...
 EMBEDDING_DIM=768
 CORS_ORIGINS=http://localhost:5173
 RATE_LIMIT_DEFAULT=120/minute
+RATE_LIMIT_STORAGE_URI=memory://
+RATE_LIMIT_AUTH_SESSION_COUNT=10
+RATE_LIMIT_AI_COUNT=30
+RATE_LIMIT_AI_WINDOW_SECONDS=60
 RATE_LIMIT_PUBLIC_COUNT=60
 RATE_LIMIT_PUBLIC_WINDOW_SECONDS=60
 N8N_WEBHOOK_URL=

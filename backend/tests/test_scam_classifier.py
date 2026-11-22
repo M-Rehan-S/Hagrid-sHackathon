@@ -25,6 +25,23 @@ def test_load_classifier_returns_callable():
     assert callable(clf)
 
 
+def test_app_factory_wires_committed_classifier_into_public_scam_service():
+    from types import SimpleNamespace
+
+    from app import create_app
+    from app.services.public_api import public_scam_check
+
+    app = create_app({"DATABASE_URL": "sqlite://", "TESTING": True})
+    with app.app_context():
+        result = public_scam_check(
+            SimpleNamespace(id="test-key", tenant_id="test-tenant"),
+            "Send your OTP to claim BISP relief.",
+        )
+
+    assert result["label"] == "scam"
+    assert 0 <= result["confidence"] <= 1
+
+
 # ---------------------------------------------------------------------------
 # Unit tests: ScamClassifier output shape
 # ---------------------------------------------------------------------------

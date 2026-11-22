@@ -22,6 +22,7 @@ def test_configured_database_and_service_tables_are_reachable():
     from app import create_app
     from app.extensions import db
     from app.models import (
+        AuditLog,
         Case,
         CaseEvent,
         Citizen,
@@ -35,6 +36,7 @@ def test_configured_database_and_service_tables_are_reachable():
         MockIdentityRecord,
         MockPayment,
         Rule,
+        ScamMessage,
         Tenant,
         User,
     )
@@ -53,17 +55,25 @@ def test_configured_database_and_service_tables_are_reachable():
                 Decision,
                 Document,
                 APIKey,
+                AuditLog,
                 EvalRun,
                 HelperCitizenLink,
                 IdempotencyKey,
                 MockIdentityRecord,
                 MockPayment,
                 Rule,
+                ScamMessage,
                 Tenant,
                 User,
             ):
                 # LIMIT 0 checks table/column mapping without returning citizen data.
                 db.session.execute(select(model).limit(0))
+
+            # RAG uses a raw pgvector query rather than an ORM model; verify
+            # its migrated table and all columns used by the retrieval query.
+            db.session.execute(text(
+                "SELECT doc_name, chunk_index, content, embedding FROM policy_chunks LIMIT 0"
+            ))
 
             # Exercise the real, read-only service queries against seeded data.
             identity = match_identity({
@@ -73,6 +83,23 @@ def test_configured_database_and_service_tables_are_reachable():
                 "dob": "1978-04-12",
             })
             assert identity.status == "exact"
+
+            # Ensure seed data required by the frontend demo and Person C's
+            # endpoints exists in the same configured database.
+            assert db.session.query(MockIdentityRecord).count() >= 200
+            assert db.session.query(ScamMessage).count() >= 3
+            assert db.session.query(HelperCitizenLink).filter_by(
+                helper_user_id="b0000000-0000-0000-0000-000000000002"
+            ).count() == 5
+            seeded_policy_docs = set(db.session.execute(text(
+                "SELECT DISTINCT doc_name FROM policy_chunks"
+            )).scalars())
+            assert seeded_policy_docs >= {
+                "01_eligibility_rules.txt",
+                "02_required_documents.txt",
+                "03_how_to_appeal.txt",
+                "04_spot_scams.txt",
+            }
 
             tenant = db.session.query(Tenant).filter_by(slug="relief").one()
             active_rule = get_active_rule(str(tenant.id), "relief_eligibility")

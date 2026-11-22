@@ -13,6 +13,7 @@ from app import auth as auth_module
 from app.api.ai import ai_bp
 from app.auth import register_auth_error_handler
 from app.extensions import db
+from conftest import init_test_limiter
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +30,7 @@ def _make_app(role: str = "citizen") -> tuple[Flask, SimpleNamespace]:
     app = Flask(__name__)
     app.config.update(TESTING=True)
     register_auth_error_handler(app)
+    init_test_limiter(app)
     app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
     return app, actor
 

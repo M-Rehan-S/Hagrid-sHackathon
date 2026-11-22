@@ -13,7 +13,7 @@ The platform provides an end-to-end multi-tenant system featuring:
 - **Decides, Explains, and Protects:** Deterministic, rule-driven decisions with clear Urdu/English explanations.
 - **Fail-Safe & Human-in-the-Loop:** Whenever confidence is low or an anomaly is detected, the AI routes cases to human review instead of rejecting or auto-approving blindly.
 - **Auditable & Sovereign:** Cryptographic hash-chained audit logs, fine-grained consent management with instant revocation, and versioned rules.
-- **Scam Detection:** An on-device / backend ML checker to verify authenticity of alleged relief SMS messages.
+- **Scam Detection:** A backend ML checker that classifies alleged relief SMS messages and gives cautious advice.
 - **Low-Connectivity & Low-Literacy Support:** Voice-first interaction (Urdu/English), icon-driven UI, and offline-ready PWA caching with idempotent sync.
 
 ---
@@ -25,7 +25,7 @@ In accordance with hackathon guidelines, all public rails and sensitive registri
 | Component | Status | Description / Implementation Details |
 |---|---|---|
 | **Identity Registry (NADRA-like)** | 🟡 **Simulated** | Mock database table (`mock_identity_records`) seeded with test personas and deliberate edge cases (name variations, typos, missing CNIC, deceased records). No real citizen PII is used. |
-| **Identity Matching Engine** | 🟢 **Real** | Implemented using token sort ratio fuzzy matching (`rapidfuzz`), Double Metaphone phonetic matching (`jellyfish`), and Pakistani name variant normalization dictionaries. |
+| **Identity Matching Engine** | 🟢 **Real** | Implemented using token sort ratio fuzzy matching (`rapidfuzz`), Double Metaphone (`doublemetaphone`), and Pakistani name variant normalization dictionaries. |
 | **Disbursement / Payment Gateway** | 🟡 **Simulated** | Mock payments engine (`mock_payments`) simulating queuing, reference generation, and processing status for relief disbursements. |
 | **Government Portal / Complaints** | 🟡 **Simulated** | Mock endpoints generating ticket references without connecting to actual state infrastructure. |
 | **Decision & Rules Engine** | 🟢 **Real** | Dynamic versioned rules evaluated against structured form data and policy constraints. Reads thresholds directly from active database rule records. |
@@ -75,6 +75,32 @@ In accordance with hackathon guidelines, all public rails and sensitive registri
 - **Backend:** Python 3.11, Flask (Application Factory & Blueprints)
 - **API Documentation & Validation:** SpecTree, Pydantic v2
 - **Database:** Supabase Postgres + `pgvector`
-- **Security & RBAC:** Custom JWT in Flask (PyJWT, bcrypt), server-side consent enforcement
+- **Security & RBAC:** Supabase Auth issues sessions; Flask verifies access JWTs (PyJWT) and enforces database roles and consent
 - **AI / LLMs:** Groq (primary) / Gemini API (fallback), pgvector RAG, scikit-learn
 - **Frontend:** React, Vite, Tailwind CSS, PWA (`vite-plugin-pwa`), Web Speech API
+
+## 5. Backend setup for frontend development
+
+The backend exposes the API contract in Swagger at `/apidocs` and OpenAPI JSON at `/apidocs/openapi.json`.
+
+1. Copy the root `.env.example` to `.env` and configure `DATABASE_URL`, Supabase JWT verification, and any optional AI provider keys.
+2. From the repository root, apply the migrations in order:
+
+   ```bash
+   psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f db/migrations/001_init.sql
+   psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f db/migrations/002_extras.sql
+   ```
+
+3. Seed the demo profiles, cases, and 200 mock identity records with `backend/venv/bin/python db/seed/seed.py`. The script also seeds policy chunks; use `--skip-policies` to omit that step.
+4. Install backend dependencies and start Flask:
+
+   ```bash
+   cd backend
+   python -m venv venv
+   venv/bin/pip install -r requirements.txt
+   venv/bin/flask --app 'app:create_app' run --debug --port 5000
+   ```
+
+The frontend uses Supabase Auth for signup, passkey/password sign-in, and session refresh. It sends the Supabase access token to Flask as a bearer token; application data must go through the Flask API. Check `PROPOSAL.md` for the authoritative routes, roles, response envelopes, and screen requirements.
+
+To add a classifier evaluation snapshot to the evaluation dashboard, run `backend/venv/bin/python backend/app/ai/evaluate_scam_classifier.py` from the repository root after configuring the database. It evaluates the fixed held-out split and stores only aggregate metrics in `eval_runs`.

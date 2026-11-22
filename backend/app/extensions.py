@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from flask import Flask
+from flask import Flask, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
@@ -33,6 +35,9 @@ class Database:
             database_url = "postgresql+psycopg://" + database_url[len("postgresql://") :]
 
         self.engine = create_engine(database_url, pool_pre_ping=True)
+        # A test process may construct more than one app with different DBs;
+        # release any scoped session before changing the shared bind.
+        self.session.remove()
         self.session.configure(bind=self.engine)
         app.extensions["db"] = self
         app.teardown_appcontext(self._remove_session)
@@ -42,3 +47,23 @@ class Database:
 
 
 db = Database()
+
+
+def _rate_limit_error(_limit):
+    response = jsonify({
+        "data": None,
+        "error": {
+            "code": "RATE_LIMITED",
+            "message": "Request limit reached. Try again shortly.",
+            "details": {},
+        },
+    })
+    response.status_code = 429
+    return response
+
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    headers_enabled=True,
+    on_breach=_rate_limit_error,
+)
