@@ -97,6 +97,43 @@ def test_case_notification_selects_event_and_rule_amount(monkeypatch):
     })
 
 
+def test_officer_rejection_notification_includes_the_written_reason(monkeypatch):
+    monkeypatch.setenv("N8N_WEBHOOK_URL", "https://n8n.example.test/hook")
+    citizen = SimpleNamespace(id=str(uuid4()), user_id=str(uuid4()), full_name="Test Citizen")
+    user = SimpleNamespace(email="citizen@example.test")
+    rule = SimpleNamespace(definition={"amount": 25000})
+    query_results = [citizen, user, rule]
+
+    class Query:
+        def filter_by(self, **_kwargs):
+            return self
+
+        def first(self):
+            return query_results.pop(0)
+
+    session = MagicMock()
+    session.query.side_effect = lambda _model: Query()
+    monkeypatch.setattr(db, "session", session)
+    send = MagicMock()
+    monkeypatch.setattr(n8n_notifier, "notify_n8n", send)
+    case = SimpleNamespace(id=str(uuid4()), citizen_id=citizen.id, tenant_id=str(uuid4()))
+    decision = SimpleNamespace(
+        actor_type="officer", outcome="rejected", route=None,
+        rule_version_id=str(uuid4()), reason_en="Generic rejection.",
+        reason_ur="عام وجہ۔", trace={"note": "Monthly income is above the limit."},
+    )
+
+    n8n_notifier.notify_case_decision(case, decision)
+
+    send.assert_called_once_with("case.rejected", {
+        "citizen_name": "Test Citizen", "case_id": case.id, "status": "rejected",
+        "amount": 25000, "reason_en": "Monthly income is above the limit.",
+        "reason_ur": "Monthly income is above the limit.",
+        "recipient_email": user.email,
+        "officer_note": "Monthly income is above the limit.",
+    })
+
+
 def test_scam_notification_only_sends_for_scam_label(monkeypatch):
     send = MagicMock()
     monkeypatch.setattr(n8n_notifier, "notify_n8n", send)

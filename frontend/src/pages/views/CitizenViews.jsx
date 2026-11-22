@@ -400,7 +400,9 @@ function CaseWorkspace({ caseId, initial, profile, citizen, language, t, onBack,
 
 function CaseHistory({ item, t, language }) {
   if (!item) return null
+  const officerDecision = [...(item.events || [])].reverse().find((event) => event.event_type === 'decision' && event.note)
   return <div className="panel case-summary"><h2>{t('case_details')}</h2><div className="detail-grid"><div><small>{t('case_status')}</small><StatusPill value={item.status} t={t} /></div><div><small>{t('case_route')}</small><strong>{t(`route_${item.route || 'unrouted'}`)}</strong></div><div><small>{t('case_updated')}</small><strong>{formatDate(item.updated_at, language)}</strong></div></div>
+    {item.status === 'rejected' && officerDecision && <article className="decision-card officer-reason"><h3>{t('officer_rejection_reason')}</h3><p>{officerDecision.note}</p></article>}
     {item.decisions?.map((decision) => <div className="decision-card" key={decision.id}><div className="panel-heading"><strong>{t('reason')}</strong><span>{decision.actor_type}</span></div><p>{language === 'ur' ? decision.reason_ur : decision.reason_en}</p>{decision.trace && <details><summary>{t('decisions')} · {t('case_confidence')} {Math.round((decision.confidence || 0) * 100)}%</summary><pre>{JSON.stringify(decision.trace, null, 2)}</pre></details>}</div>)}
     {!!item.events?.length && <details className="history-details"><summary>{t('activity')}</summary>{item.events.map((event) => <div key={event.id} className="history-row"><span>{event.event_type}</span><time>{formatDate(event.created_at, language)}</time>{event.note && <p>{event.note}</p>}</div>)}</details>}
   </div>

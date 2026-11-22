@@ -24,11 +24,14 @@ class Config:
     SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
     SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
     SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "documents")
-    CORS_ORIGINS = [
+    CORS_ORIGINS = list(dict.fromkeys(
         origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+        for origin in [
+            *os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
+            "https://hagrid-s-hackathon.vercel.app",
+        ]
         if origin.strip()
-    ]
+    ))
     RATE_LIMIT_PUBLIC_COUNT = int(os.getenv("RATE_LIMIT_PUBLIC_COUNT", "60"))
     RATE_LIMIT_PUBLIC_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_PUBLIC_WINDOW_SECONDS", "60"))
     RATE_LIMIT_AI_COUNT = int(os.getenv("RATE_LIMIT_AI_COUNT", "30"))

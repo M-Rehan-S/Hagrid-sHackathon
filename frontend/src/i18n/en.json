@@ -252,5 +252,7 @@
   "cnic_invalid": "Enter all 13 digits of your CNIC to continue.",
   "name_required": "Please enter your full name to continue.",
   "decision_unavailable_title": "This application is not ready for a decision",
-  "decision_unavailable": "Current status: {status}. Officers can decide only after an application is submitted or in review."
+  "decision_unavailable": "Current status: {status}. Officers can decide only after an application is submitted or in review.",
+  "eligible_cases": "Submitted or in review",
+  "officer_rejection_reason": "Why the officer rejected this application"
 }

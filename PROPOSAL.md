@@ -580,7 +580,7 @@ Removed: `POST /auth/register` and `POST /auth/login` (replaced by Supabase Auth
 |`POST /cases/{id}/decision`|officer|`{outcome: "approved"\|"rejected"\|"needs_more_proof", note}` writes a `decisions` row with `actor_type='officer'`; sets status; if `approved`, creates a mock payment in the same transaction. The note is retained in `decisions.trace.note` and the case event; `reason_en`/`reason_ur` are deterministic bilingual outcome explanations, not copies of the officer note|
 |`POST /cases/{id}/close`|officer, admin||
 
-After the decision transaction commits, the backend best-effort sends `case.approved` for an AI `auto_approve` route or officer approval, and `case.human_review` for an AI `human_review` route. It sends the citizen name, case ID, status, rule amount, bilingual reason, and linked account email when available. Missing `N8N_WEBHOOK_URL` is a no-op; webhook errors never change the API result. Recipient addresses ending in `@demo.pk` are sent as null so n8n can use its verified fallback inbox.
+After the decision transaction commits, the backend best-effort sends `case.approved` for an AI `auto_approve` route or officer approval, `case.human_review` for an AI `human_review` route, and `case.rejected` for an officer rejection. It sends the citizen name, case ID, status, rule amount, bilingual reason, and linked account email when available. For `case.rejected`, `officer_note` carries the officer's written reason and is also copied to `reason_en` and `reason_ur` so existing email templates that render either reason field display it. Missing `N8N_WEBHOOK_URL` is a no-op; webhook errors never change the API result and are logged by event and error type. Recipient addresses ending in `@demo.pk` are sent as null so n8n can use its verified fallback inbox. The n8n workflow must handle the `case.rejected` event and render the supplied officer note.
 
 Status transitions allowed: `draft -> needs_info | submitted`, `needs_info -> submitted`, `submitted -> approved | in_review | needs_info`, `in_review -> approved | rejected | needs_info`, `approved|rejected -> closed`. Anything else returns 409 `CONFLICT`.
 
@@ -870,7 +870,7 @@ GEMINI_LLM_MODEL=...
 EMBEDDING_PROVIDER=gemini
 EMBEDDING_MODEL=...
 EMBEDDING_DIM=768
-CORS_ORIGINS=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173,https://hagrid-s-hackathon.vercel.app
 RATE_LIMIT_DEFAULT=120/minute
 RATE_LIMIT_STORAGE_URI=memory://
 RATE_LIMIT_AUTH_SESSION_COUNT=10

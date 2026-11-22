@@ -235,6 +235,31 @@ def test_officer_approval_creates_decision_payment_event_and_audit(monkeypatch):
     notification.assert_called_once_with(item, decision, officer_approval=True)
 
 
+def test_officer_rejection_notifies_n8n_after_commit(monkeypatch):
+    actor = _user("officer")
+    item = _case(actor, status=CaseStatus.in_review)
+    session = MagicMock()
+    monkeypatch.setattr(db, "session", session)
+    monkeypatch.setattr(case_service, "_case_or_404", lambda *_: item)
+    monkeypatch.setattr(case_service, "_require_case_access", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(case_service.audit, "log", MagicMock())
+
+    def assert_notifier_runs_after_commit(*_args, **_kwargs):
+        assert session.commit.call_count == 1
+
+    notification = MagicMock(side_effect=assert_notifier_runs_after_commit)
+    monkeypatch.setattr(case_service, "notify_case_decision", notification)
+    note = "Monthly income is above the limit."
+
+    updated = case_service.decide_case_as_officer(actor, item.id, DecisionOutcome.rejected, note)
+
+    assert updated.status == CaseStatus.rejected
+    session.commit.assert_called_once_with()
+    decision = session.add.call_args_list[0].args[0]
+    assert decision.trace == {"note": note}
+    notification.assert_called_once_with(item, decision)
+
+
 @pytest.mark.parametrize(
     "status",
     [CaseStatus.draft, CaseStatus.needs_info, CaseStatus.approved, CaseStatus.rejected, CaseStatus.closed],

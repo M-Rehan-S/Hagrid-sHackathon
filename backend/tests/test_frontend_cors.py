@@ -41,6 +41,22 @@ def test_unconfigured_frontend_origin_does_not_receive_cors_access():
     assert response.headers.get("Access-Control-Allow-Origin") is None
 
 
+def test_production_vercel_origin_is_allowed_by_default():
+    app = create_app({"DATABASE_URL": "sqlite://", "TESTING": True})
+
+    response = app.test_client().options(
+        "/api/v1/auth/session",
+        headers={
+            "Origin": "https://hagrid-s-hackathon.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Authorization",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == "https://hagrid-s-hackathon.vercel.app"
+
+
 def test_factory_applies_global_ip_rate_limit_with_standard_error_envelope():
     from app.extensions import limiter
 

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 from urllib import request as urllib_request
 
 try:
     import requests
 except ImportError:  # Requirements install requests; keep optional dev envs bootable.
     requests = None
+
+logger = logging.getLogger(__name__)
 
 
 def _value(value):
@@ -29,7 +32,8 @@ def notify_n8n(event: str, payload: dict) -> None:
             safe_payload["recipient_email"] = None
         body = {"event": event, **safe_payload}
         if requests is not None:
-            requests.post(url, json=body, timeout=2)
+            response = requests.post(url, json=body, timeout=2)
+            response.raise_for_status()
         else:
             req = urllib_request.Request(
                 url,
@@ -39,9 +43,9 @@ def notify_n8n(event: str, payload: dict) -> None:
             )
             with urllib_request.urlopen(req, timeout=2):
                 pass
-    except Exception:
+    except Exception as exc:
         # Notifications must never fail the main API operation.
-        pass
+        logger.warning("n8n %s notification failed (%s)", event, type(exc).__name__)
 
 
 def notify_case_decision(case, decision, *, officer_approval: bool = False) -> None:
@@ -60,6 +64,15 @@ def notify_case_decision(case, decision, *, officer_approval: bool = False) -> N
                 return
             event = "case.approved"
             status = "approved"
+            officer_note = None
+        elif (
+            _value(getattr(decision, "actor_type", None)) == "officer"
+            and _value(decision.outcome) == DecisionOutcome.rejected.value
+        ):
+            event = "case.rejected"
+            status = "rejected"
+            trace = getattr(decision, "trace", None) or {}
+            officer_note = trace.get("note") if isinstance(trace, dict) else None
         else:
             route = _value(decision.route)
             if route == "auto_approve":
@@ -68,6 +81,7 @@ def notify_case_decision(case, decision, *, officer_approval: bool = False) -> N
                 event, status = "case.human_review", "in_review"
             else:
                 return
+            officer_note = None
 
         citizen = db.session.query(Citizen).filter_by(
             id=str(case.citizen_id), tenant_id=str(case.tenant_id)
@@ -85,15 +99,20 @@ def notify_case_decision(case, decision, *, officer_approval: bool = False) -> N
                 id=str(decision.rule_version_id), tenant_id=str(case.tenant_id)
             ).first()
         rule_amount = rule.definition.get("amount") if rule and rule.definition else None
-        notify_n8n(event, {
+        reason_en = officer_note or decision.reason_en
+        reason_ur = officer_note or decision.reason_ur
+        payload = {
             "citizen_name": citizen.full_name,
             "case_id": str(case.id),
             "status": status,
             "amount": rule_amount,
-            "reason_en": decision.reason_en,
-            "reason_ur": decision.reason_ur,
+            "reason_en": reason_en,
+            "reason_ur": reason_ur,
             "recipient_email": user.email if user else None,
-        })
+        }
+        if officer_note:
+            payload["officer_note"] = officer_note
+        notify_n8n(event, payload)
     except Exception:
         # Post-commit lookups or notifications cannot roll back a decision or
         # turn a successful API operation into a failure.

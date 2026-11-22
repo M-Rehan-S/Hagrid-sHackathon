@@ -481,6 +481,8 @@ def decide_case_as_officer(actor: User, case_id: str, outcome: DecisionOutcome, 
     db.session.commit()
     if outcome == DecisionOutcome.approved:
         notify_case_decision(item, decision, officer_approval=True)
+    elif outcome == DecisionOutcome.rejected:
+        notify_case_decision(item, decision)
     return item
 
 

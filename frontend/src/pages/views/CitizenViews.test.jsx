@@ -93,6 +93,22 @@ describe('citizen application journey', () => {
     expect((await screen.findAllByText('Submitted')).length).toBeGreaterThan(0)
   })
 
+  it('shows the officer-written rejection reason on the citizen receipt', async () => {
+    localStorage.setItem(`citizen-id:${profile.id}`, citizen.id)
+    api.cases.mockResolvedValue([{ id: 'case-1', citizen_id: citizen.id, status: 'rejected', form_data: { full_name: 'Fatima Bibi' } }])
+    api.case.mockResolvedValue({
+      id: 'case-1', citizen_id: citizen.id, status: 'rejected', form_data: { full_name: 'Fatima Bibi' },
+      decisions: [{ id: 'decision-1', actor_type: 'officer', outcome: 'rejected', reason_en: 'An officer declined this claim after review.' }],
+      events: [{ id: 'event-1', event_type: 'decision', note: 'Your monthly income is above the program limit.' }],
+    })
+    const user = userEvent.setup()
+    render(<CasesView profile={profile} language={language} t={t} selectedCitizen={null} onNavigate={vi.fn()} />)
+    await user.click(await screen.findByRole('button', { name: /Fatima Bibi/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Why the officer rejected this application' })).toBeInTheDocument()
+    expect(screen.getAllByText('Your monthly income is above the program limit.').length).toBeGreaterThan(0)
+  })
+
   it('starts a local claim offline and stores answers until the create operation can sync', async () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
     localStorage.setItem(`citizen-id:${profile.id}`, citizen.id)
