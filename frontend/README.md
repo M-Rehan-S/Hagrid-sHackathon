@@ -1,35 +1,30 @@
-# Frontend passkey sign-in
+# Relief Claim Copilot frontend
 
-This initial frontend slice demonstrates passkey sign-in through Supabase Auth. It does not collect or upload biometric samples. After Supabase returns a session, the app calls the existing Flask `/api/v1/auth/session` endpoint; Flask continues to verify the Supabase JWT and load the user's role from the database.
+Responsive React app for the API contract in `../PROPOSAL.md`. Citizen pages start in Urdu and use a one-question-at-a-time application flow, large controls, voice input/output when the browser supports it, and a numbered mobile navigation. Staff pages use a desktop-oriented workspace and are available to the role returned by the backend. English/Urdu text, RTL layout, offline draft storage, a retryable sync queue, and an installable PWA shell are included.
+
+The frontend uses Supabase for authentication only. All user, case, rules, audit, consent, AI and mock-service data is requested from Flask at `/api/v1`.
 
 ## Run locally
 
-```bash
+```sh
 npm ci
 cp .env.example .env
 npm run dev
 ```
 
-Fill in `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL` in `frontend/.env`.
+Set `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` in `frontend/.env`. These are public client configuration values; never put a service-role key or other server secret in a `VITE_` variable. Start the Flask API separately and configure Supabase Auth to allow the local frontend origin.
 
-## Run the automated checks
+Supabase passkeys must be enabled in the Supabase dashboard with the deployment's WebAuthn relying-party ID and allowed origins. Password sign-in, signup, recovery, and passkey enrollment are available. The backend still determines the user's role and permissions.
 
-From `frontend/`, run:
+## Checks
 
-```bash
+```sh
 npm test
 npm run build
 ```
 
-The frontend tests mock Supabase and the Flask API, so they do not need a real account, network access, or biometric device. They cover passkey sign-in and backend session verification, failed sign-in, password sign-in followed by passkey enrollment, backend JWT rejection, and the Urdu/English direction toggle. From the repository root, run the backend CORS and regression tests with:
+The tests cover auth/session handling, API envelopes and errors, English/Urdu dictionary parity, and the citizen profile/application save/submit journey. They mock Supabase and Flask and do not need a live account or backend.
 
-```bash
-cd backend
-venv/bin/python -m pytest -q
-```
+## Backend capabilities that constrain the UI
 
-## Enable passkeys in Supabase
-
-Passkeys are experimental in the current Supabase JavaScript SDK and must be enabled in the Supabase Dashboard under **Authentication → Passkeys**. Set a stable relying-party ID and allowed origins before users enroll. For local development, use the local frontend origin `http://localhost:5173`; production requires the deployed HTTPS origin. Changing the relying-party ID later invalidates existing passkeys.
-
-Supabase requires an existing, confirmed account to register a passkey. Create the account, confirm it if email confirmation is enabled, sign in once with the account password, then choose **Add a passkey to this device**. Returning users can then use **Sign in with passkey** without entering an email or password. Keep the password sign-in for account setup and recovery.
+The frontend follows `PROPOSAL.md` when it differs from `prompt.md`. The API currently describes one `relief_claim` program and has no user-administration or public scheme-list endpoint. Rule editing accepts the proposal's JSON rule definition; it cannot ingest PDFs. Identity checks are a mock service and helper linking awaits citizen consent. Device passkeys are handled by Supabase; the app never collects palm or fingerprint images. The helper receives a citizen ID to request a link because the proposal's identity lookup returns mock identity candidates rather than a citizen record ID.

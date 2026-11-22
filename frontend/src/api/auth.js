@@ -3,14 +3,24 @@ import { apiBaseUrl } from '../supabase'
 async function backendAuth(path, accessToken) {
   if (!apiBaseUrl) throw new Error('Backend API URL is not configured.')
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: path === '/auth/session' ? 'POST' : 'GET',
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
+  let response
+  try {
+    response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}${path}`, {
+      method: path === '/auth/session' ? 'POST' : 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+  } catch (cause) {
+    const error = new Error('Could not reach the service.')
+    error.status = 0
+    error.cause = cause
+    throw error
+  }
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error(body?.error?.message || 'BACKEND_AUTH_FAILED')
+    const error = new Error(body?.error?.message || 'BACKEND_AUTH_FAILED')
+    error.status = response.status
+    throw error
   }
   return body.data.user
 }

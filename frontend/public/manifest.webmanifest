@@ -1,0 +1,17 @@
+{
+  "name": "Relief Claim Copilot",
+  "short_name": "Relief Help",
+  "description": "A simple bilingual mock relief application and case status service.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F9F5EA",
+  "theme_color": "#09392B",
+  "lang": "ur",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
