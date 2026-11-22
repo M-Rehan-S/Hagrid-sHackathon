@@ -25,6 +25,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app import models as _models  # noqa: F401
 
     from app.api.auth import auth_bp
+    from app.api.ai import ai_bp
     from app.api.audit import audit_bp
     from app.api.cases import cases_bp
     from app.api.citizens import citizens_bp
@@ -38,6 +39,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     from app.services.consent_service import ConsentError
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
     app.register_blueprint(audit_bp, url_prefix="/api/v1/audit-logs")
     app.register_blueprint(cases_bp, url_prefix="/api/v1/cases")
     app.register_blueprint(citizens_bp, url_prefix="/api/v1")

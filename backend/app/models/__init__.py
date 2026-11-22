@@ -18,6 +18,7 @@ from app.models.idempotency_key import IdempotencyKey
 from app.models.mock_identity_record import MockIdentityRecord
 from app.models.mock_payment import MockPayment
 from app.models.rule import Rule
+from app.models.scam_message import ScamMessage
 from app.models.tenant import Tenant
 from app.models.user import User
 
@@ -36,6 +37,7 @@ __all__ = [
     "MockIdentityRecord",
     "MockPayment",
     "Rule",
+    "ScamMessage",
     "Tenant",
     "User",
 ]

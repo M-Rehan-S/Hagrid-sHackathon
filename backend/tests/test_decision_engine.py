@@ -423,3 +423,100 @@ def test_unknown_case_raises_lookup_error(monkeypatch):
 
     with pytest.raises(LookupError):
         decision_engine.decide("missing-case")
+
+
+def test_rule_versioning_activation_changes_next_decision_and_preserves_old_reference(monkeypatch):
+    import types
+
+    from app.services import identity_match, rule_service
+
+    class _VersionedRule:
+        id = _Column("rules.id")
+        tenant_id = _Column("rules.tenant_id")
+        rule_key = _Column("rules.rule_key")
+        status = _Column("rules.status")
+
+        def __init__(self, *, id, version, status, definition):
+            self.id = id
+            self.tenant_id = "tenant-1"
+            self.rule_key = "relief_eligibility"
+            self.version = version
+            self.status = status
+            self.definition = definition
+            self.activated_at = None
+
+    class _RuleQuery:
+        def __init__(self, rules):
+            self.rules = rules
+            self.criteria = {}
+            self.expressions = ()
+
+        def filter_by(self, **criteria):
+            self.criteria.update(criteria)
+            return self
+
+        def filter(self, *expressions):
+            self.expressions = expressions
+            return self
+
+        def first(self):
+            for rule in self.rules:
+                if all(getattr(rule, key) == value for key, value in self.criteria.items()):
+                    return rule
+            return None
+
+        def update(self, values, synchronize_session=False):
+            updated = 0
+            for rule in self.rules:
+                matches = True
+                for column, operator, expected in self.expressions:
+                    actual = getattr(rule, column.rsplit(".", 1)[-1])
+                    matches &= actual == expected if operator == "==" else actual != expected
+                if matches:
+                    for key, value in values.items():
+                        setattr(rule, key, value)
+                    updated += 1
+            return updated
+
+    _db, audit_log = _install_models_and_db(monkeypatch)
+    rule_model = types.ModuleType("app.models.rule")
+    rule_model.Rule = _VersionedRule
+    monkeypatch.setitem(sys.modules, "app.models.rule", rule_model)
+
+    definition_v1 = _rule(thresholds={"auto_approve": 0.98, "ask_more": 0.70}).definition
+    definition_v2 = _rule(thresholds={"auto_approve": 0.99, "ask_more": 0.70}).definition
+    version_v1 = _VersionedRule(id="rule-v1", version=1, status="active", definition=definition_v1)
+    version_v2 = _VersionedRule(id="rule-v2", version=2, status="draft", definition=definition_v2)
+    rules = [version_v1, version_v2]
+    _db.session.query.side_effect = lambda model: _RuleQuery(rules) if model is _VersionedRule else MagicMock()
+
+    case_v1 = _case()
+    case_v1.id = "case-v1"
+    case_v2 = _case()
+    case_v2.id = "case-v2"
+    cases = {case_v1.id: case_v1, case_v2.id: case_v2}
+    monkeypatch.setattr(decision_engine, "_get_case", lambda case_id: cases.get(case_id))
+    monkeypatch.setattr(
+        decision_engine, "_get_documents",
+        lambda _case_id: [SimpleNamespace(kind="cnic_photo", quality_score=1.0)],
+    )
+    monkeypatch.setattr(decision_engine, "_get_anomaly_flags", lambda *_args: [])
+    monkeypatch.setattr(identity_match, "match_identity", lambda _form: _identity(confidence=0.98))
+
+    old_decision = decision_engine.decide(case_v1.id)
+    assert old_decision.route == "auto_approve"
+    assert old_decision.rule_version_id == "rule-v1"
+
+    activated = rule_service.activate_rule("rule-v2", "admin-1")
+    assert activated is version_v2
+    assert version_v1.status == "archived"
+
+    next_decision = decision_engine.decide(case_v2.id)
+
+    assert next_decision.route == "ask_more"
+    assert next_decision.rule_version_id == "rule-v2"
+    assert old_decision.rule_version_id == "rule-v1"
+    assert old_decision.trace["rule"]["version"] == 1
+    assert next_decision.trace["rule"]["version"] == 2
+    assert _db.session.commit.call_count == 3  # decision v1, activation, decision v2
+    assert any(call.kwargs.get("action") == "rule.activate" for call in audit_log.call_args_list)

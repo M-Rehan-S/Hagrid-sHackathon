@@ -74,6 +74,47 @@ def test_list_cases_runs_consent_and_pii_audit_check_for_citizen_cases(monkeypat
     )
 
 
+def test_officer_queue_applies_filters_priority_order_and_consent_visibility(monkeypatch):
+    actor = _user("officer")
+    visible = _case(actor, status=CaseStatus.in_review)
+    hidden = _case(actor, status=CaseStatus.submitted)
+    query = MagicMock()
+    query.filter_by.return_value = query
+    query.filter.return_value = query
+    query.order_by.return_value = query
+    query.all.return_value = [visible, hidden]
+    session = MagicMock()
+    session.query.return_value = query
+    monkeypatch.setattr(db, "session", session)
+
+    def consent_check(_actor, citizen_id, _scope):
+        if citizen_id == hidden.citizen_id:
+            raise case_service.ConsentError("CONSENT_WITHDRAWN", "withdrawn", 403)
+
+    access_check = MagicMock(side_effect=consent_check)
+    monkeypatch.setattr(case_service, "check_citizen_access", access_check)
+
+    result = case_service.list_cases(
+        actor,
+        {"status": "in_review", "route": "human_review", "assigned_to": "officer-1"},
+    )
+
+    assert result == [visible]
+    query.filter_by.assert_called_once_with(tenant_id=actor.tenant_id)
+    filter_sql = [str(call.args[0]) for call in query.filter.call_args_list]
+    assert any("cases.status" in expression for expression in filter_sql)
+    assert any("cases.route" in expression for expression in filter_sql)
+    assert any("cases.assigned_to" in expression for expression in filter_sql)
+    order_sql = [str(expression) for expression in query.order_by.call_args.args]
+    assert len(order_sql) == 3
+    assert "CASE WHEN (cases.route = :route_1) THEN :param_1 ELSE :param_2 END" in order_sql[0]
+    assert "cases.priority ASC" in order_sql[1]
+    assert "cases.confidence ASC NULLS LAST" in order_sql[2]
+    assert "cases.route =" in order_sql[0]  # human_review routes rank first
+    assert access_check.call_count == 2
+    assert all(call.args[2] == ConsentScope.claim_data for call in access_check.call_args_list)
+
+
 def test_form_validation_normalizes_cnic_and_reports_bad_fields():
     normalized, invalid = case_service._validate_form({
         "full_name": "Fatima Bibi",
@@ -192,6 +233,74 @@ def test_officer_approval_creates_decision_payment_event_and_audit(monkeypatch):
     assert "افسر نے" in decision.reason_ur
     assert decision.trace == {"note": "Approved after review."}
     notification.assert_called_once_with(item, decision, officer_approval=True)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [CaseStatus.draft, CaseStatus.needs_info, CaseStatus.approved, CaseStatus.rejected, CaseStatus.closed],
+)
+def test_officer_decision_rejects_cases_outside_submitted_or_review(status, monkeypatch):
+    actor = _user("officer")
+    item = _case(actor, status=status)
+    session = MagicMock()
+    monkeypatch.setattr(db, "session", session)
+    monkeypatch.setattr(case_service, "_case_or_404", lambda *_: item)
+    monkeypatch.setattr(case_service, "_require_case_access", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(CaseError) as exc:
+        case_service.decide_case_as_officer(
+            actor, item.id, DecisionOutcome.approved, "review note"
+        )
+
+    assert exc.value.code == "CONFLICT"
+    assert exc.value.status_code == 409
+    session.add.assert_not_called()
+    session.commit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "status",
+    [CaseStatus.draft, CaseStatus.needs_info, CaseStatus.submitted, CaseStatus.in_review, CaseStatus.closed],
+)
+def test_close_case_rejects_nonfinal_cases(status, monkeypatch):
+    actor = _user("officer")
+    item = _case(actor, status=status)
+    session = MagicMock()
+    monkeypatch.setattr(db, "session", session)
+    monkeypatch.setattr(case_service, "_case_or_404", lambda *_: item)
+    access_check = MagicMock()
+    monkeypatch.setattr(case_service, "_require_case_access", access_check)
+
+    with pytest.raises(CaseError) as exc:
+        case_service.close_case(actor, item.id)
+
+    assert exc.value.code == "CONFLICT"
+    assert exc.value.status_code == 409
+    assert item.status == status
+    assert item.closed_at is None
+    access_check.assert_called_once_with(actor, item)
+    session.commit.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [CaseStatus.approved, CaseStatus.rejected])
+def test_close_case_accepts_only_approved_or_rejected(status, monkeypatch):
+    actor = _user("officer")
+    item = _case(actor, status=status)
+    session = MagicMock()
+    monkeypatch.setattr(db, "session", session)
+    monkeypatch.setattr(case_service, "_case_or_404", lambda *_: item)
+    monkeypatch.setattr(case_service, "_require_case_access", lambda *_args, **_kwargs: None)
+    audit_log = MagicMock()
+    monkeypatch.setattr(case_service.audit, "log", audit_log)
+
+    closed = case_service.close_case(actor, item.id)
+
+    assert closed is item
+    assert item.status == CaseStatus.closed
+    assert item.closed_at is not None
+    assert item.updated_at == item.closed_at
+    assert audit_log.call_args.kwargs["action"] == "case.close"
+    session.commit.assert_called_once_with()
 
 
 def test_submit_notifies_only_after_decision_commit(monkeypatch):

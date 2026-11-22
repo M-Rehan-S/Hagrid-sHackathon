@@ -16,6 +16,12 @@ class CaseType(str, Enum):
     scam_report = "scam_report"
 
 
+class ScamLabel(str, Enum):
+    scam = "scam"
+    legit = "legit"
+    unsure = "unsure"
+
+
 class CaseStatus(str, Enum):
     draft = "draft"
     needs_info = "needs_info"
