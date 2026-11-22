@@ -101,6 +101,22 @@ def test_extract_form_blank_text(monkeypatch):
     assert resp.json["error"]["code"] == "VALIDATION_ERROR"
 
 
+@pytest.mark.parametrize("existing_form", ["not-an-object", ["unexpected"], 7])
+def test_extract_form_rejects_non_object_existing_form(existing_form, monkeypatch):
+    app, actor = _make_app()
+    monkeypatch.setattr(auth_module, "_decode_access_token", lambda _t: {"sub": actor.id})
+    monkeypatch.setattr(db, "session", MagicMock(**{"get.return_value": actor}))
+
+    resp = app.test_client().post(
+        "/api/v1/ai/extract-form",
+        json={"text": "Please help with my application", "existing_form": existing_form},
+        headers=_auth_headers(),
+    )
+
+    assert resp.status_code == 400
+    assert resp.json["error"]["code"] == "VALIDATION_ERROR"
+
+
 # ---------------------------------------------------------------------------
 # Regex fallback extraction (no LLM keys)
 # ---------------------------------------------------------------------------

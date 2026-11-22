@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -214,6 +215,8 @@ def test_transcribe_audit_logged(monkeypatch):
     assert mock_log.called
     call_kwargs = mock_log.call_args.kwargs
     assert call_kwargs["action"] == "ai.transcribe"
+    proposal = Path(__file__).resolve().parents[2] / "PROPOSAL.md"
+    assert "`ai.transcribe`" in proposal.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

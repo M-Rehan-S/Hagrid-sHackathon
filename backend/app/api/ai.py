@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from collections import deque
+from functools import wraps
+from threading import RLock
+import time
 from typing import Any, Literal, Optional
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.ai.form_extractor import extract_form
@@ -18,6 +22,37 @@ from app.services.scam_service import ScamCheckError, check_scam
 
 
 ai_bp = Blueprint("ai", __name__)
+_ai_limit_lock = RLock()
+_ai_request_times: dict[str, deque[float]] = {}
+
+
+def _limit_ai_requests(view):
+    """Apply the proposal's per-user rolling-window limit after authentication."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user_id = str(g.current_user.id)
+        limit = int(current_app.config.get("RATE_LIMIT_AI_COUNT", 30))
+        window = int(current_app.config.get("RATE_LIMIT_AI_WINDOW_SECONDS", 60))
+        if limit < 1 or window < 1:
+            return jsonify({
+                "data": None,
+                "error": {"code": "INTERNAL_ERROR", "message": "AI rate limiting is misconfigured.", "details": {}},
+            }), 500
+
+        now = time.monotonic()
+        with _ai_limit_lock:
+            events = _ai_request_times.setdefault(user_id, deque())
+            while events and now - events[0] >= window:
+                events.popleft()
+            if len(events) >= limit:
+                return jsonify({
+                    "data": None,
+                    "error": {"code": "RATE_LIMITED", "message": "AI request limit reached. Try again shortly.", "details": {}},
+                }), 429, {"Retry-After": str(max(1, int(window - (now - events[0]))))}
+            events.append(now)
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +82,7 @@ class ExtractFormRequest(BaseModel):
 
     text: str = Field(min_length=1, max_length=20000)
     lang: Literal["ur", "en"] = "ur"
-    existing_form: Optional[Any] = None
+    existing_form: Optional[dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +103,7 @@ def handle_scam_check_error(error: ScamCheckError):
 
 @ai_bp.post("/scam-check")
 @require_auth
+@_limit_ai_requests
 def post_scam_check():
     try:
         body = PublicScamCheckRequest.model_validate(request.get_json(silent=True) or {})
@@ -86,6 +122,7 @@ def post_scam_check():
 
 @ai_bp.post("/ask")
 @require_auth
+@_limit_ai_requests
 def post_ask():
     """Answer a policy question using RAG over policy_chunks (PROPOSAL.md §7.5)."""
     try:
@@ -129,6 +166,7 @@ def post_ask():
 
 @ai_bp.post("/extract-form")
 @require_role("citizen", "helper")
+@_limit_ai_requests
 def post_extract_form():
     """Extract ClaimForm fields from free-form text (PROPOSAL.md §7.5)."""
     raw_body = request.get_json(silent=True) or {}
@@ -172,6 +210,7 @@ def post_extract_form():
 
 @ai_bp.post("/transcribe")
 @require_role("citizen", "helper")
+@_limit_ai_requests
 def post_transcribe():
     """Transcribe audio to text via Whisper (PROPOSAL.md §7.5)."""
     if "audio" not in request.files:

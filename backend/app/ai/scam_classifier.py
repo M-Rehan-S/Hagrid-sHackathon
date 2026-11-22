@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
 
 MODEL_PATH = Path(__file__).parent / "models" / "scam_classifier.joblib"
 
@@ -95,6 +96,29 @@ def _keyword_check(text: str) -> Optional[dict]:
                     fired_category = _CATEGORIES["account"]
                 else:
                     fired_category = _CATEGORIES["default"]
+
+    # The proposal treats links outside the government .gov.pk domain as a
+    # warning signal. Keep official government links out of this hard override.
+    for candidate in re.findall(
+        r"(?<![@\w])(?:https?://)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:/[^\s<>\"']*)?",
+        lower,
+    ):
+        host = urlsplit(candidate if "://" in candidate else f"//{candidate}").hostname
+        if host and host != "gov.pk" and not host.endswith(".gov.pk"):
+            fired_reasons.append("Contains a link outside the .gov.pk domain")
+            fired_category = fired_category or _CATEGORIES["link"]
+            break
+
+    # Urgency is a stronger signal when used to pressure someone about relief
+    # money. Avoid flagging unrelated urgent public notices by themselves.
+    urgent = re.search(
+        r"\b(urgent|immediately|right now|act now|last chance|final warning|today only|within \d+ hours|foran|abhi|aakhri mauqa)\b|فوراً|ابھی|آخری موقع|آج ہی",
+        lower,
+    )
+    relief_context = re.search(r"\b(bisp|ehsaas|relief|grant|payment|cash assistance|ration)\b|امداد|وظیفہ|بی آئی ایس پی|احساس", lower)
+    if urgent and relief_context:
+        fired_reasons.append("Uses urgency to pressure a relief-payment recipient")
+        fired_category = fired_category or _CATEGORIES["default"]
     if fired_reasons:
         return {
             "label": "scam",

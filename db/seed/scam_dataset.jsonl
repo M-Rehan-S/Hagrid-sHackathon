@@ -145,3 +145,56 @@
 {"text": "Ministry of Health: Sehat Card covers Rs 1 million treatment per family per year. No premium needed.", "label": "legit"}
 {"text": "BISP: Ap Kafaalat payment k liye eligible hain. Payment outlet list bisp.gov.pk par dastiyaab hai.", "label": "legit"}
 {"text": "NBP SMS: Your BISP payment of Rs 14,000 is ready for Q4-2024. Visit nearest NBP branch.", "label": "legit"}
+{"text":"Urgent BISP payment release: click https://relief-portal.example.invalid and enter your CNIC to claim today.","label":"scam"}
+{"text":"Your Ehsaas grant is blocked. Send your OTP immediately to reactivate the payment.","label":"scam"}
+{"text":"Final chance to receive free ration; pay a small registration fee before midnight.","label":"scam"}
+{"text":"BISP cash grant approved! Share your bank PIN now or the amount will expire.","label":"scam"}
+{"text":"Aakhri mauqa: foran apna OTP bhejein warna BISP ki raqam zaya ho jayegi.","label":"scam"}
+{"text":"Ehsaas madad ke liye abhi CNIC aur bank ka PIN is ghair sarkari link par dein.","label":"scam"}
+{"text":"BISP payment lene ka aakhri din hai, is link par foran registration fee jama karein.","label":"scam"}
+{"text":"Aapka relief grant tayyar hai. Abhi apna OTP bhejein warna account band ho jayega.","label":"scam"}
+{"text":"فوری اطلاع: امدادی رقم لینے کے لیے اپنا خفیہ پن اس لنک پر درج کریں۔","label":"scam"}
+{"text":"آخری موقع، آج ہی رجسٹریشن فیس بھیجیں ورنہ وظیفہ منسوخ ہو جائے گا۔","label":"scam"}
+{"text":"بی آئی ایس پی ادائیگی کھلوانے کے لیے اپنا او ٹی پی ابھی ہمیں بھیجیں۔","label":"scam"}
+{"text":"سرکاری امداد کے نام پر رقم حاصل کرنے کے لیے شناختی کارڈ کی تصویر اس ویب سائٹ پر اپ لوڈ کریں۔","label":"scam"}
+{"text":"Claim your emergency relief money at https://bisp-benefit.example.invalid within 2 hours or lose eligibility.","label":"scam"}
+{"text":"Immediate action required: pay PKR 300 to unlock your government grant.","label":"scam"}
+{"text":"Congratulations, your ration subsidy is ready. Reply with CNIC and account password now.","label":"scam"}
+{"text":"BISP ki raqam aaj hi hasil karein, warna apka account permanently band ho jayega.","label":"scam"}
+{"text":"Foran 500 rupay bhejein aur Ehsaas payment ka double bonus hasil karein.","label":"scam"}
+{"text":"Aapka CNIC relief list mein hai. Abhi is unofficial website par apni maloomat dein.","label":"scam"}
+{"text":"Urgent! Agent ko apna ATM PIN bata dein taake widow grant release ho sake.","label":"scam"}
+{"text":"Your cash assistance will be cancelled today. Verify your OTP at this link immediately.","label":"scam"}
+{"text":"Free government grant! First pay the processing charge, then send your CNIC photo.","label":"scam"}
+{"text":"آج ہی امدادی رقم لینے کے لیے اپنا بینک پاس ورڈ اور شناختی کارڈ بھیجیں۔","label":"scam"}
+{"text":"فوراً رجسٹریشن کریں، ورنہ بیوہ امداد ہمیشہ کے لیے بند ہو جائے گی۔","label":"scam"}
+{"text":"امدادی رقم جاری کرنے کے لیے خفیہ کوڈ اور اے ٹی ایم پن مانگا جا رہا ہے۔","label":"scam"}
+{"text":"Last warning: click this private claim link and send your one-time code for relief funds.","label":"scam"}
+{"text":"Your BISP card is suspended. Pay an urgent verification fee to restore it.","label":"scam"}
+{"text":"Ehsaas cash bonus expires tonight; share your CNIC, OTP, and bank details.","label":"scam"}
+{"text":"BISP payment schedule is published at bisp.gov.pk. Please check the official notice for dates.","label":"legit"}
+{"text":"The nearest official payment centre can be found through the district office. No fee is charged.","label":"legit"}
+{"text":"Ehsaas programme staff will never ask for your PIN or OTP by phone or message.","label":"legit"}
+{"text":"Please keep your CNIC safe and visit the official office during normal hours for assistance.","label":"legit"}
+{"text":"Aaj BISP ki payment ki maloomat ke liye apne qareebi sarkari markaz se rabta karein.","label":"legit"}
+{"text":"Ehsaas program ke liye koi registration fee nahi. Sirf official notice par bharosa karein.","label":"legit"}
+{"text":"Apna OTP aur ATM PIN kisi ko na batayein. Sarkari idara yeh maloomat nahi mangta.","label":"legit"}
+{"text":"Aapki application ki jaanch jari hai. Natije ke liye official BISP daftar se tasdeeq karein.","label":"legit"}
+{"text":"District office ke auqat mein madad desk par ja kar apne sawalat pooch sakte hain.","label":"legit"}
+{"text":"بی آئی ایس پی کی ادائیگی کی تاریخیں سرکاری ویب سائٹ bisp.gov.pk پر دیکھی جا سکتی ہیں۔","label":"legit"}
+{"text":"اپنا پن اور یک وقتی کوڈ کسی کے ساتھ شیئر نہ کریں؛ سرکاری ادارہ یہ معلومات نہیں مانگتا۔","label":"legit"}
+{"text":"امداد کے لیے کوئی پیشگی فیس نہیں ہے۔ معلومات کے لیے قریبی سرکاری مرکز جائیں۔","label":"legit"}
+{"text":"آپ کی درخواست زیرِ جائزہ ہے۔ تصدیق کے لیے ضلعی دفتر کے اوقات میں رابطہ کریں۔","label":"legit"}
+{"text":"شناختی کارڈ اپنے پاس محفوظ رکھیں اور صرف سرکاری اعلان کے مطابق ادائیگی وصول کریں۔","label":"legit"}
+{"text":"The programme does not send claim links by text. Confirm updates through the official government site.","label":"legit"}
+{"text":"Your scheduled payment is available at the registered outlet. Staff should not ask for your password.","label":"legit"}
+{"text":"The public help desk can explain application status; there is no charge for this service.","label":"legit"}
+{"text":"Aaj daftar ke auqat mein BISP help desk se apni application ka status pooch sakte hain.","label":"legit"}
+{"text":"Payment lene ke liye official centre par jaen; kisi ko apna password ya PIN na dein.","label":"legit"}
+{"text":"Madad ki tafseel sarkari notice board aur official website par mojood hai.","label":"legit"}
+{"text":"Kisi bhi payment se pehle official daftar se tasdeeq karein; registration muft hai.","label":"legit"}
+{"text":"ضلعی مرکز درخواست کی معلومات عام دفتری اوقات میں فراہم کرتا ہے۔","label":"legit"}
+{"text":"سرکاری ویب سائٹ پر اعلان دیکھیں؛ پیغام کے ذریعے پاس ورڈ یا پن فراہم نہ کریں۔","label":"legit"}
+{"text":"ادائیگی کے لیے کسی ایجنٹ کو پیشگی رقم دینے کی ضرورت نہیں ہوتی۔","label":"legit"}
+{"text":"درخواست کی حالت جاننے کے لیے اپنے اصل شناختی کاغذات کے ساتھ دفتر تشریف لائیں۔","label":"legit"}
+{"text":"بی آئی ایس پی کے مستحقین کے لیے تازہ معلومات صرف سرکاری اعلانات سے حاصل کریں۔","label":"legit"}

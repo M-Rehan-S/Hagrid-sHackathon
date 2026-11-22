@@ -30,7 +30,7 @@ google-generativeai>=0.8.0       # Gemini free-tier (fallback LLM + embeddings)
 
 # ── Classical ML (Person C) ───────────────────────────────────────────────────
 numpy>=1.26.0                   # embeddings fallback and vector operations
-scikit-learn>=1.4.0              # TF-IDF + Logistic Regression for scam classifier (§8.3)
+scikit-learn==1.9.1              # Match the committed scam model artifact's training version
 
 # ── File Storage ───────────────────────────────────────────────────────────────
 supabase>=2.6.0                  # Supabase Python client for Storage signed URLs

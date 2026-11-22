@@ -646,7 +646,7 @@ API key create and revoke actions write `apikey.create` and `apikey.revoke` audi
 |`POST /public/scam-check`|Requires `X-API-Key` for an active key. `{text}` returns the validated `ScamCheckResult`; public requests are rate-limited to 60/minute per key and are not associated with a citizen. Uses Person C's configured classifier; if it is not configured or unavailable, returns 502 `AI_UNAVAILABLE` and never guesses|
 |`GET /public/cases/{id}/status`|Requires `X-API-Key`; the case must belong to that key's tenant. Returns only `{status, updated_at}`. No PII|
 
-API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. Current rate counters are in process memory, so a multi-worker deployment must move them to a shared rate-limit store before relying on a global per-key ceiling. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
+API keys are looked up by their stored 8-character prefix, then verified by constant-time comparison of the SHA-256 key hash; revoked or unknown keys return 401. AI and public rate counters are in process memory, so a multi-worker deployment must move them to a shared rate-limit store before relying on global per-user or per-key ceilings. `GET /health` is unauthenticated, runs `SELECT 1`, and returns 503 with a generic unavailable status if Postgres cannot be reached.
 
 ### 7.12 Offline sync
 
@@ -772,7 +772,7 @@ audit.log(actor_type, actor_id, action, entity_type, entity_id, payload, tenant_
 # prev_hash = hash of the last row (or 64 zeros for the first row). Use a DB advisory lock so concurrent writes keep the chain valid.
 ```
 
-Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `citizen.create`, `citizen.update`, `helper.link`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `mock.payment.create`, `ai.extract_form`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`. The read-only Digital Twin is an explicit exception: it returns aggregate decision outcomes and case IDs but writes no audit or application data, so it does not emit `twin.simulate` or `data.read_pii` rows.
+Required `action` values (use exactly these; failed logins are in Supabase Auth logs, not here <!-- CHANGED: SB-AUTH -->): `auth.login`, `user.create`, `user.update`, `citizen.create`, `citizen.update`, `helper.link`, `case.create`, `case.update_form`, `case.submit`, `case.assign`, `case.escalate`, `case.close`, `document.upload`, `mock.payment.create`, `ai.extract_form`, `ai.transcribe`, `ai.scam_check`, `ai.rag_answer`, `ai.decision`, `officer.decision`, `rule.create`, `rule.activate`, `consent.grant`, `consent.withdraw`, `consent.access_denied`, `data.read_pii`, `data.export`, `apikey.create`, `apikey.revoke`, `sync.batch`. The read-only Digital Twin is an explicit exception: it returns aggregate decision outcomes and case IDs but writes no audit or application data, so it does not emit `twin.simulate` or `data.read_pii` rows.
 
 ### 8.7 Consent enforcement (`@require_consent(scope)`)
 
@@ -786,7 +786,7 @@ For any read of citizen data by someone other than the citizen:
 
 ### 8.8 Rate limiting and failure handling
 
-- Global default 120 requests/min per IP; stricter on `/auth/session` (10/min) <!-- CHANGED: SB-AUTH --> and `/ai/*` (30/min per user); per-key limits on `/public/*`.
+- Global default 120 requests/min per IP; stricter on `/auth/session` (10/min) <!-- CHANGED: SB-AUTH --> and `/ai/*` (30/min per user, configurable with `RATE_LIMIT_AI_COUNT` and `RATE_LIMIT_AI_WINDOW_SECONDS`); per-key limits on `/public/*`.
 - LLM calls: timeout 10 s, one retry, then fallback provider, then give up and go to `human_review` or return `AI_UNAVAILABLE`. Never return a guessed answer.
 
 ---
