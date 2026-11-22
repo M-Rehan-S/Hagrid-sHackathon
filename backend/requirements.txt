@@ -29,6 +29,7 @@ groq>=0.9.0                      # Groq Llama + Whisper (primary LLM provider)
 google-generativeai>=0.8.0       # Gemini free-tier (fallback LLM + embeddings)
 
 # ── Classical ML (Person C) ───────────────────────────────────────────────────
+numpy>=1.26.0                   # embeddings fallback and vector operations
 scikit-learn>=1.4.0              # TF-IDF + Logistic Regression for scam classifier (§8.3)
 
 # ── File Storage ───────────────────────────────────────────────────────────────

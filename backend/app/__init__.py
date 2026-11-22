@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from flask import Flask, redirect
+from flask_cors import CORS
 
 from app.config import Config
 from app.extensions import db
@@ -13,6 +14,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
+
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", ["http://localhost:5173"])}},
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+        methods=["GET", "POST", "PATCH", "OPTIONS"],
+    )
 
     from app.auth import register_auth_error_handler
 
