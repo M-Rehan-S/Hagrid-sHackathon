@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 from flask import Flask, redirect
-
+from flask_cors import CORS
 from app.config import Config
 from app.extensions import db
 
 
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173",
+                ]
+            }
+        },
+    )
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
@@ -49,7 +60,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(eval_bp, url_prefix="/api/v1/eval")
     app.register_blueprint(mock_services_bp, url_prefix="/api/v1/mock")
     app.register_blueprint(public_bp, url_prefix="/api/v1/public")
-    app.register_blueprint(health_bp)
+    app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(rules_bp, url_prefix="/api/v1/rules")
     app.register_blueprint(sync_bp, url_prefix="/api/v1/sync")
     app.register_blueprint(twin_bp, url_prefix="/api/v1/twin")

@@ -1,0 +1,28 @@
+:root{--g:#09392B;--c:#F9F5EA;--g2:#0d5240}
+*{box-sizing:border-box}
+body{margin:0;background:var(--c);color:var(--g);font:18px/1.5 system-ui,"Noto Nastaliq Urdu",sans-serif}
+a{color:var(--g)}
+.banner{background:var(--g);color:var(--c);text-align:center;padding:6px;font-size:14px}
+header.nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:2px solid var(--g)}
+header.nav b{flex:1}
+header.nav a{text-decoration:none;padding:4px 10px;border:1px solid var(--g);border-radius:8px}
+header.nav a.on{background:var(--g);color:var(--c)}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1,h2,h3{margin:.4em 0}
+.card{border:2px solid var(--g);border-radius:12px;padding:14px;margin:10px 0}
+button,.btn{background:var(--g);color:var(--c);border:2px solid var(--g);border-radius:10px;padding:10px 16px;font:inherit;cursor:pointer;margin:4px}
+button.alt{background:var(--c);color:var(--g)}
+button:disabled{opacity:.5}
+input,select,textarea{width:100%;padding:10px;font:inherit;border:2px solid var(--g);border-radius:10px;background:#fff;color:var(--g);margin:6px 0}
+label{display:block;margin-top:8px;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:0 0 auto}
+.err{border:2px solid #8a1c1c;color:#8a1c1c;padding:8px;border-radius:8px;margin:8px 0}
+.tag{display:inline-block;border:1px solid var(--g);border-radius:20px;padding:0 10px;font-size:14px}
+.big{display:block;width:100%;font-size:22px;padding:18px;text-align:center}
+.bar{display:flex;gap:6px;margin:10px 0}.bar span{flex:1;height:10px;border-radius:5px;background:#d9d3bf}.bar span.f{background:var(--g)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{border-bottom:1px solid var(--g);padding:6px;text-align:start;vertical-align:top}
+pre{background:#fff;border:1px solid var(--g);padding:8px;border-radius:8px;overflow:auto;font-size:13px;direction:ltr;text-align:left;white-space:pre-wrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--g);margin-inline-end:4px}
+.dot.off{background:#8a1c1c}
